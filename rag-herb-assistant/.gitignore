@@ -1,0 +1,18 @@
+# Generated artifacts (regenerate by running the notebooks)
+chunks/*.json
+indexes/*.index
+indexes/*.pkl
+models/*.pkl
+data/labelled_intent_queries.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db

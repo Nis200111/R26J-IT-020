@@ -1,0 +1,15 @@
+pandas
+numpy
+scikit-learn
+sentence-transformers
+faiss-cpu
+langchain
+ollama
+shap
+ragas
+matplotlib
+seaborn
+joblib
+streamlit
+jupyter
+notebook
