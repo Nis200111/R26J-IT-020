@@ -19,10 +19,14 @@ except Exception as e:
 
 
 def mock_predict(image: Image.Image):
+    """
+    Mock prediction function for medicinal plant authentication.
+    Returns a mock label and confidence score for the given image.
+    """
     return {"label": "Getakola", "confidence": 0.92}
 
 
-@router.post("/predict")
+@router.post("/predict", summary="Authenticate Medicinal Plant", description="Upload an image of a medicinal plant leaf to authenticate its species and verify if it is genuine.")
 async def predict(file: UploadFile = File(...)):
     if model is None and model_load_error:
         return {"error": True, "message": f"Model unavailable: {model_load_error}"}
