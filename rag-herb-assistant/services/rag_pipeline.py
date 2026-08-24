@@ -116,16 +116,42 @@ class HerbRAGPipeline:
 
     # ----- 5. Risk classification -----------------------------------------
     def predict_risk(self, health_context: dict) -> dict:
-        """health_context has the 5 feature keys. Returns risk level + top factors."""
+        """
+        health_context has the 5 feature keys. Returns risk level + top factors.
+
+        Responsible-AI behaviour: if the user gives a condition/medication/age
+        the model was never trained on (e.g. "cancer"), we do NOT silently map
+        it to a known class. Instead we return "Caution" with an honest warning,
+        because predicting on unknown input would be misleading in a
+        safety-critical domain.
+        """
         ctx = build_health_context(health_context)
         row = []
+        unknown_inputs = {}
         for col in self.feature_columns:
             le = self.feature_encoders[col]
             val = ctx.get(col, "none")
-            # unseen category -> fall back to the first known class
             if val not in le.classes_:
+                # herb_name has 1000+ classes; an unseen herb is not a safety
+                # problem, so only flag the true safety features.
+                if col != "herb_name":
+                    unknown_inputs[col] = val
                 val = le.classes_[0]
             row.append(le.transform([val])[0])
+
+        if unknown_inputs:
+            details = ", ".join(f"{k}='{v}'" for k, v in unknown_inputs.items())
+            return {
+                "risk_level": "Caution",
+                "top_factors": list(unknown_inputs.keys()),
+                "warning": (
+                    f"The value(s) {details} are outside the system's training "
+                    f"data, so an accurate risk prediction is not possible. "
+                    f"Defaulting to 'Caution' — please consult a qualified "
+                    f"medical or Ayurvedic practitioner."
+                ),
+            }
+
         X = pd.DataFrame([row], columns=self.feature_columns)
         pred = self.risk_model.predict(X)[0]
         level = self.target_encoder.inverse_transform([pred])[0]
@@ -144,7 +170,7 @@ class HerbRAGPipeline:
             f"Dosage: {r.get('dosage')}\n"
             f"Contraindications: {r.get('contraindications')}\n"
             f"Properties: {r.get('medical_properties')}\n"
-            f"Source: {r.get('source')}"
+            f"Source: {r.get('source')} (type: {r.get('source_type')})"
             for r in records
         )
         safety = ""
@@ -187,11 +213,32 @@ class HerbRAGPipeline:
             )
 
     # ----- Orchestrator ----------------------------------------------------
+    OUT_OF_SCOPE_THRESHOLD = 0.30  # top FAISS score below this = not a herb question
+
+    def is_out_of_scope(self, query: str) -> bool:
+        """Greetings/off-topic queries retrieve nothing relevant (low score)."""
+        top = self.retrieve(query, k=1)
+        return (not top) or top[0]["semantic_score"] < self.OUT_OF_SCOPE_THRESHOLD
+
     def answer_query(self, query, health_context=None):
         """
         Full pipeline. If the query needs health context and none is supplied,
         returns the follow-up questions instead of a final answer.
         """
+        # Out-of-scope check BEFORE intent/health-context, so greetings like
+        # "how are u?" don't trigger the safety questionnaire.
+        if self.is_out_of_scope(query):
+            return {
+                "type": "out_of_scope",
+                "intent": None,
+                "answer": ("I'm a Sri Lankan medicinal herb knowledge assistant. "
+                           "Please ask me about herbs, their uses, dosage, "
+                           "properties, or safety — for example: "
+                           "'What is Gotukola used for?'"),
+                "risk": None,
+                "sources": [],
+            }
+
         intent = self.classify_intent(query)
         needs_ctx = self.needs_health_context(query, intent)
 
@@ -219,6 +266,7 @@ class HerbRAGPipeline:
             "risk": risk,
             "sources": [
                 {"herb": r.get("herb_name_english"), "source": r.get("source"),
+                 "source_type": r.get("source_type"),
                  "score": round(r.get("rerank_score", 0), 3)}
                 for r in records
             ],
