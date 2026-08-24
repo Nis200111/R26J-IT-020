@@ -12,7 +12,7 @@ Multi-Modal Framework for Preserving Sri Lankan Indigenous Medical Knowledge.
 Navigate to the backend folder and run the server:
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload -port 8000
 
 ### Frontend
 Navigate to the frontend folder and start the web app:
