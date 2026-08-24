@@ -21,7 +21,7 @@ npm install
 npm run dev
 
 ## Features
-- Plant Authentication System
+- Medicinal Plant Authentication System (Deep Learning based genuineness verification)
 - Plant Disease Detection System
 
 ## Setup and Deployment
