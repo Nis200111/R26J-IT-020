@@ -111,55 +111,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. SECTION: Our Locations */}
-      <section id="locations" className="py-20 border-b border-zinc-200/50">
-        <div className="container mx-auto px-6 max-w-5xl text-center">
-          <div className="mb-12 text-center max-w-xl mx-auto">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Explore Centers</span>
-            <h2 className="font-serif text-3xl font-bold text-zinc-950 mt-1">Our Locations</h2>
-            <div className="h-0.5 w-12 bg-[#c5a880] mx-auto mt-3"></div>
-          </div>
+      {/* 3. SECTION: CORE FRAMEWORK COMPONENTS */}
+      <section id="research-modules" className="container mx-auto px-6 py-24 max-w-6xl text-center scroll-mt-6">
+        <div className="mb-12 text-center max-w-xl mx-auto">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Research &amp; Technology</span>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-zinc-950 mt-2">Core Framework Components</h2>
+          <p className="mt-3 text-sm text-zinc-500 font-light">
+            Developed by our 4-member research team, each specializing in a critical AI domain to protect and digitize indigenous knowledge.
+          </p>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
-              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
-                <Building className="h-5 w-5" />
-              </div>
-              <h4 className="font-serif text-lg font-bold text-zinc-800">Ayurveda Hospital - Anuradhapura</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed font-light">
-                Our main clinical facility offering intensive treatments, pulse diagnosis, and chronic ailment management in the historic capital.
-              </p>
-              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
-                LEARN MORE <ChevronRight className="h-3 w-3" />
-              </a>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
-              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
-                <Compass className="h-5 w-5" />
-              </div>
-              <h4 className="font-serif text-lg font-bold text-zinc-800">Wellness Resort - Mihintale</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed font-light">
-                A peaceful retreat nestled in the sacred hills of Mihintale, focusing on Panchakarma, meditation, and detox plans.
-              </p>
-              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
-                LEARN MORE <ChevronRight className="h-3 w-3" />
-              </a>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
-              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
-                <MapPin className="h-5 w-5" />
-              </div>
-              <h4 className="font-serif text-lg font-bold text-zinc-800">Ayurveda Retreat - Anuradhapura</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed font-light">
-                Premium accommodation suites combined with personalized organic herbal diet plans and yoga for daily rejuvenation.
-              </p>
-              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
-                LEARN MORE <ChevronRight className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <RagSection />
+          <IntentSection />
+          <ExplainSection />
+          <GatewaySection />
         </div>
       </section>
 
@@ -301,21 +267,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 9. SECTION: CORE FRAMEWORK COMPONENTS */}
-      <section id="research-modules" className="container mx-auto px-6 py-24 max-w-6xl text-center scroll-mt-6">
-        <div className="mb-12 text-center max-w-xl mx-auto">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Research &amp; Technology</span>
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-zinc-950 mt-2">Core Framework Components</h2>
-          <p className="mt-3 text-sm text-zinc-500 font-light">
-            Developed by our 4-member research team, each specializing in a critical AI domain to protect and digitize indigenous knowledge.
-          </p>
-        </div>
+      {/* 9. SECTION: Our Locations */}
+      <section id="locations" className="py-20 border-b border-zinc-200/50">
+        <div className="container mx-auto px-6 max-w-5xl text-center">
+          <div className="mb-12 text-center max-w-xl mx-auto">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Explore Centers</span>
+            <h2 className="font-serif text-3xl font-bold text-zinc-950 mt-1">Our Locations</h2>
+            <div className="h-0.5 w-12 bg-[#c5a880] mx-auto mt-3"></div>
+          </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <RagSection />
-          <IntentSection />
-          <ExplainSection />
-          <GatewaySection />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
+                <Building className="h-5 w-5" />
+              </div>
+              <h4 className="font-serif text-lg font-bold text-zinc-800">Ayurveda Hospital - Anuradhapura</h4>
+              <p className="text-xs text-zinc-500 leading-relaxed font-light">
+                Our main clinical facility offering intensive treatments, pulse diagnosis, and chronic ailment management in the historic capital.
+              </p>
+              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
+                LEARN MORE <ChevronRight className="h-3 w-3" />
+              </a>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
+                <Compass className="h-5 w-5" />
+              </div>
+              <h4 className="font-serif text-lg font-bold text-zinc-800">Wellness Resort - Mihintale</h4>
+              <p className="text-xs text-zinc-500 leading-relaxed font-light">
+                A peaceful retreat nestled in the sacred hills of Mihintale, focusing on Panchakarma, meditation, and detox plans.
+              </p>
+              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
+                LEARN MORE <ChevronRight className="h-3 w-3" />
+              </a>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-[#c5a880] hover:shadow-md transition-all duration-300 space-y-4">
+              <div className="h-10 w-10 rounded-full bg-[#f5f2eb] text-[#c5a880] flex items-center justify-center">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <h4 className="font-serif text-lg font-bold text-zinc-800">Ayurveda Retreat - Anuradhapura</h4>
+              <p className="text-xs text-zinc-500 leading-relaxed font-light">
+                Premium accommodation suites combined with personalized organic herbal diet plans and yoga for daily rejuvenation.
+              </p>
+              <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#c5a880] hover:text-[#b0936b]">
+                LEARN MORE <ChevronRight className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 

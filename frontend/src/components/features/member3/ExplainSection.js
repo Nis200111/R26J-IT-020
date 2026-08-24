@@ -1,66 +1,56 @@
-"use client";
-
 import Link from "next/link";
-import { Leaf, ScanSearch, FlaskConical, ArrowRight } from "lucide-react";
+import { Leaf } from "lucide-react";
 
 export default function ExplainSection() {
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 dark:border-zinc-800 dark:bg-zinc-900">
-      {/* Gradient accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-emerald-900/20 pointer-events-none rounded-2xl" />
+    <Link href="/plant-disease-detection" className="block outline-none h-full">
+      <section
+        tabIndex={0}
+        className="group relative cursor-pointer rounded-2xl border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-full flex flex-col"
+      >
+        <div className="flex flex-col gap-5 text-left h-full">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-100 bg-zinc-50 text-emerald-600 group-hover:bg-emerald-100/50 group-hover:text-emerald-700 transition-all duration-300">
+              <Leaf className="h-6 w-6" />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-zinc-800 group-hover:text-emerald-800 transition-colors duration-300">
+              Medicinal Plant Disease Detection
+            </h2>
+          </div>
 
-      {/* Header */}
-      <div className="relative z-10 flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
-          <Leaf className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+          <p className="text-sm leading-relaxed text-zinc-500 group-hover:text-zinc-600 transition-colors duration-300">
+            AI-powered dual-stage analysis that classifies plant diseases and quantifies infection spread at the pixel level — producing a Medicinal Quality Score to ensure only potent leaves reach production.
+          </p>
+
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-3">
+              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">EFFICIENTNETB4 CLASSIFIER</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">U-NET SEGMENTATION</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">QUALITY SCORING</span>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-8px] group-hover:translate-x-0">
+            ANALYZE A PLANT
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </div>
         </div>
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-            Member 3 · Sahan
-          </span>
-          <h3 className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            Medicinal Plant Disease Detection
-          </h3>
-        </div>
-      </div>
-
-      {/* Description */}
-      <p className="relative z-10 mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-        AI-powered dual-stage analysis that classifies plant diseases and
-        quantifies infection spread at the pixel level — producing a{" "}
-        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-          Medicinal Quality Score
-        </span>{" "}
-        to ensure only potent leaves reach production.
-      </p>
-
-      {/* Feature pills */}
-      <div className="relative z-10 mt-5 flex flex-wrap gap-2">
-        {[
-          { icon: <ScanSearch className="h-3.5 w-3.5" />, label: "EfficientNetB4 Classifier" },
-          { icon: <FlaskConical className="h-3.5 w-3.5" />, label: "U-Net Segmentation" },
-          { icon: <Leaf className="h-3.5 w-3.5" />, label: "Quality Scoring" },
-        ].map((pill) => (
-          <span
-            key={pill.label}
-            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-          >
-            {pill.icon}
-            {pill.label}
-          </span>
-        ))}
-      </div>
-
-      {/* CTA */}
-      <div className="relative z-10 mt-6">
-        <Link
-          href="/plant-disease-detection"
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 hover:gap-3 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-        >
-          Analyze a Plant
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </div>
+      </section>
+    </Link>
   );
 }
