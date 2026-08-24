@@ -20,11 +20,6 @@ cd frontend
 npm install
 npm run dev
 
-<<<<<<< Updated upstream
-## Features
-- Plant Authentication System
-- Plant Disease Detection System
-=======
 ## Research Components
 
 Our project integrates four advanced AI and Data Science systems to preserve, identify, and cultivate Sri Lankan indigenous medical knowledge:
@@ -40,7 +35,6 @@ A computer vision diagnostic tool using a dual-stage architecture (EfficientNetB
 
 ### 4. Medical Plant Climate Forecasting & Suitability Prediction
 A predictive ML system leveraging the Prophet time-series model to forecast future temperature and precipitation changes in Sri Lanka up to 2030. It couples this with a rule-based classifier to predict which regional habitats will remain suitable for cultivating specific medicinal plants under changing climates.
->>>>>>> Stashed changes
 
 ## Setup and Deployment
 Set `NEXT_PUBLIC_API_URL` in frontend `.env.local` to connect to the backend.
