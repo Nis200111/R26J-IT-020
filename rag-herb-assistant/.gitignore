@@ -4,6 +4,7 @@ indexes/*.index
 indexes/*.pkl
 models/*.pkl
 data/labelled_intent_queries.csv
+data/herb_contraindication_risk_dataset.csv
 
 # Python
 __pycache__/
