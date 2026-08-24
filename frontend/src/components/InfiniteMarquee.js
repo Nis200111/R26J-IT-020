@@ -11,6 +11,11 @@ const tickerPlants = [
   { name: 'Heen Binkohomba', scientific: '', status: 'Genuine', image: '/plants/Heen_Binkohomba.jpg' }
 ];
 
+/**
+ * InfiniteMarquee Component
+ * Displays a continuous, auto-scrolling marquee of trained medicinal species.
+ * Used for the Plant Authentication System to showcase reference standards.
+ */
 export default function InfiniteMarquee() {
   return (
     <div className="w-full px-4 lg:px-12 my-8">
