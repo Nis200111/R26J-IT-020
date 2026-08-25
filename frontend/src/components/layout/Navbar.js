@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Leaf, Database, Menu, X, Globe, Check, ChevronRight, User as UserIcon } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { Leaf, Database, Menu, X, Globe, Check, ChevronRight } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -122,20 +120,7 @@ export default function Navbar() {
                 <span>{currentLang}</span>
               </button>
 
-              {user ? (
-                <div className="flex items-center gap-4 border-l border-zinc-200/50 pl-6">
-                  {user.role === "admin" && (
-                    <Link href="/admin" className={linkClass}>Admin</Link>
-                  )}
-                  <span className={`flex items-center gap-1.5 ${linkClass}`}>
-                    <UserIcon className="h-4 w-4 text-emerald-500 shrink-0" />
-                    {user.email.split("@")[0]}
-                  </span>
-                  <button onClick={logout} className={linkClass}>Logout</button>
-                </div>
-              ) : (
-                <Link href="/login" className={`border-l border-zinc-200/50 pl-6 ${linkClass}`}>Login</Link>
-              )}
+
             </div>
 
             <div className="md:hidden">
@@ -169,16 +154,7 @@ export default function Navbar() {
                 <span>Language: {currentLang}</span>
               </button>
 
-              {user ? (
-                <>
-                  {user.role === "admin" && (
-                    <Link href="/admin" className="block rounded-md px-3 py-2 hover:bg-zinc-50 border-t border-zinc-100 pt-3">Admin</Link>
-                  )}
-                  <button onClick={logout} className="w-full text-left rounded-md px-3 py-2 hover:bg-zinc-50">Logout ({user.email})</button>
-                </>
-              ) : (
-                <Link href="/login" className="block rounded-md px-3 py-2 hover:bg-zinc-50 border-t border-zinc-100 pt-3">Login</Link>
-              )}
+
             </div>
           </div>
         )}

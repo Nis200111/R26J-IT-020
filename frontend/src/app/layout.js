@@ -3,7 +3,6 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Script from "next/script";
-import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,11 +43,9 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-        <AuthProvider>
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
-        </AuthProvider>
       </body>
     </html>
   );
