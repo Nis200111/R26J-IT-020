@@ -6,13 +6,19 @@ Run:  python services/test_query.py
 Features:
 - Session memory: your health context is collected ONCE and remembered for
   the whole chat, so follow-up questions are never repeated.
-- Type 'reset' to clear your saved health context (e.g. to test a new persona).
+- Persistent sessions: that context is also saved to data/session_context.json,
+  so it survives closing the program and is reloaded next time you start.
 - Every query is logged to data/query_log.csv (timestamp, query, intent, risk)
   for later usage analysis.
-- Type 'quit' to exit.
+
+Commands:
+  profile  - show the health context currently remembered
+  reset    - forget the saved health context (this run AND the saved file)
+  quit     - exit
 """
 
 import csv
+import json
 import os
 from datetime import datetime
 
@@ -20,6 +26,46 @@ from rag_pipeline import HerbRAGPipeline
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.normpath(os.path.join(_HERE, "..", "data", "query_log.csv"))
+SESSION_PATH = os.path.normpath(os.path.join(_HERE, "..", "data", "session_context.json"))
+
+
+# ---------------------------------------------------------------------------
+# Persistent session storage
+# ---------------------------------------------------------------------------
+def load_session():
+    """Read the saved health context from disk, or None if there isn't one."""
+    if not os.path.exists(SESSION_PATH):
+        return None
+    try:
+        with open(SESSION_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("health_context")
+    except (json.JSONDecodeError, OSError):
+        # Corrupted or unreadable file - behave as if no session was saved.
+        return None
+
+
+def save_session(ctx):
+    """Write the health context to disk so the next run can reuse it."""
+    payload = {"saved_at": datetime.now().isoformat(timespec="seconds"),
+               "health_context": ctx}
+    with open(SESSION_PATH, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+
+def clear_session():
+    """Delete the saved session file, if it exists."""
+    if os.path.exists(SESSION_PATH):
+        os.remove(SESSION_PATH)
+
+
+def describe_context(ctx):
+    """One-line human-readable summary of a health context."""
+    if not ctx:
+        return "(none saved)"
+    return (f"age={ctx.get('age_group')}, condition={ctx.get('patient_condition')}, "
+            f"medication={ctx.get('medication_context')}, "
+            f"dosage form={ctx.get('dosage_form')}")
 
 
 def log_query(query, intent, risk_level, result_type):
@@ -53,27 +99,43 @@ def main():
     print("Loading the assistant (first run may take a few seconds)...")
     pipe = HerbRAGPipeline()
     print("Ready! Ask a question about Sri Lankan medicinal herbs.")
-    print("Commands: 'reset' = clear saved health context, 'quit' = exit.\n")
+    print("Commands: 'profile' = show saved context, 'reset' = clear it, 'quit' = exit.")
 
-    session_context = None  # <-- chat memory: remembered across questions
+    # Chat memory: reloaded from disk so it survives restarts.
+    session_context = load_session()
+    last_herb = None  # herb from the previous turn, for "tell me more about that"
+    if session_context:
+        print(f"\n  [Loaded saved health profile: {describe_context(session_context)}]")
+        print("  [Type 'reset' if this is not you.]")
+    print()
 
     while True:
         query = input("You: ").strip()
         if query.lower() in ("quit", "exit", "q", ""):
             print("Goodbye!")
             break
+        if query.lower() == "profile":
+            print(f"  [Current health context: {describe_context(session_context)}]\n")
+            continue
         if query.lower() == "reset":
             session_context = None
-            print("  [Health context cleared. You will be asked again next time.]\n")
+            clear_session()
+            print("  [Health context cleared from memory and disk. "
+                  "You will be asked again next time.]\n")
             continue
 
-        # Pass the remembered context so follow-ups are not repeated.
-        result = pipe.answer_query(query, health_context=session_context)
+        # Pass the remembered context so follow-ups are not repeated, and the
+        # last herb so "tell me more about that" works.
+        result = pipe.answer_query(query, health_context=session_context,
+                                   last_herb=last_herb)
 
         # Tell the user if we corrected a misspelled herb name.
         if result.get("corrections"):
             for typed, proper in result["corrections"]:
                 print(f"\n  [Did you mean '{proper}'? Showing results for '{proper}'.]")
+
+        if result.get("followed_up_on"):
+            print(f"\n  [Continuing about {result['followed_up_on']}.]")
 
         # Off-topic query: answer politely, no questionnaire.
         if result["type"] == "out_of_scope":
@@ -85,6 +147,8 @@ def main():
         if result["type"] == "need_context":
             print(f"\n  [Intent detected: {result['intent']}]")
             session_context = ask_context_interactively(result["followup_questions"])
+            save_session(session_context)   # persist for future runs
+            print("  [Saved. You will not be asked again, even after restart.]")
             result = pipe.answer_query(query, health_context=session_context)
 
         risk = result.get("risk")
@@ -105,6 +169,10 @@ def main():
             print(f"   - {label}  [{s['source']} | {s['source_type']}]  "
                   f"score={s['score']}")
         print("=" * 60 + "\n")
+
+        # Remember the top herb so the next turn can say "more about that".
+        if result["sources"]:
+            last_herb = result["sources"][0]["herb"] or result["sources"][0]["herb_english"]
 
         log_query(query, result["intent"],
                   risk["risk_level"] if risk else None, result["type"])
