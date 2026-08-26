@@ -41,6 +41,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _BASE = os.path.normpath(os.path.join(_HERE, ".."))
 INDEX_PATH = os.path.join(_BASE, "indexes", "sl_herb_faiss.index")
 META_PATH = os.path.join(_BASE, "indexes", "herb_metadata.pkl")
+CSV_PATH = os.path.join(_BASE, "data", "sri_lankan_herb_knowledge_base.csv")
 INTENT_MODEL_PATH = os.path.join(_BASE, "models", "intent_classifier.pkl")
 RISK_MODEL_PATH = os.path.join(_BASE, "models", "herb_risk_random_forest_model.pkl")
 FEAT_ENC_PATH = os.path.join(_BASE, "models", "feature_label_encoders.pkl")
@@ -76,6 +77,12 @@ class HerbRAGPipeline:
         self.index = faiss.read_index(INDEX_PATH)
         with open(META_PATH, "rb") as f:
             self.metadata = pickle.load(f)
+
+        # The metadata pickle from notebook 01 only kept a subset of columns.
+        # Join the full CSV back on herb_id so every field (description,
+        # compounds, edible parts, ...) is available when answering. The FAISS
+        # vectors are untouched, so no re-embedding is needed.
+        self._enrich_metadata_from_csv()
 
         # Intent classifier
         with open(INTENT_MODEL_PATH, "rb") as f:
@@ -137,6 +144,22 @@ class HerbRAGPipeline:
                 corrected = re.sub(rf"\b{re.escape(w)}\b", proper, corrected)
 
         return corrected, corrections
+
+    def _enrich_metadata_from_csv(self):
+        """Merge any CSV columns missing from the pickled metadata, by herb_id."""
+        if not os.path.exists(CSV_PATH):
+            return
+        df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+        for c in df.select_dtypes(include="object").columns:
+            df[c] = df[c].fillna("").astype(str).str.strip()
+        by_id = {r["herb_id"]: r for _, r in df.iterrows()}
+        for rec in self.metadata:
+            row = by_id.get(rec.get("herb_id"))
+            if row is None:
+                continue
+            for col in df.columns:
+                if not str(rec.get(col, "")).strip():
+                    rec[col] = row[col]
 
     # ----- 1. Intent -------------------------------------------------------
     def classify_intent(self, query: str) -> str:
@@ -273,10 +296,18 @@ class HerbRAGPipeline:
             f"Herb (Sinhala): {r.get('herb_name_sinhala')}\n"
             f"English name: {r.get('herb_name_english')}\n"
             f"Latin name: {r.get('herb_name_latin')}\n"
-            f"Used for: {r.get('treatment_for')}\n"
+            f"Family: {r.get('family')}\n"
+            f"Synonyms: {r.get('synonyms')}\n"
+            f"Description: {r.get('description')}\n"
+            f"Used for (treatment): {r.get('treatment_for')}\n"
+            f"Parts used in treatment: {r.get('parts_used_in_treatment')}\n"
             f"Dosage: {r.get('dosage')}\n"
             f"Contraindications: {r.get('contraindications')}\n"
-            f"Properties: {r.get('medical_properties')}\n"
+            f"Medical properties: {r.get('medical_properties')}\n"
+            f"Compounds: {r.get('compounds')}\n"
+            f"Edible parts: {r.get('edible_parts')}\n"
+            f"Native distribution: {r.get('native_distribution')}\n"
+            f"Conservation status: {r.get('conservation_status')}\n"
             f"Source: {r.get('source')} (type: {r.get('source_type')})"
             for r in records
         )
@@ -305,7 +336,16 @@ class HerbRAGPipeline:
             "4. If the records are about completely different herbs than the "
             f"one asked about, reply exactly: \"{FALLBACK_ANSWER}\"\n"
             "Always add a short safety note telling the user to consult a qualified "
-            "Ayurvedic or medical practitioner for personal use.\n\n"
+            "Ayurvedic or medical practitioner for personal use.\n"
+            "ANSWER LENGTH: when the user asks about a herb in general "
+            "(e.g. 'tell me about Ranawara', 'what is X', 'more details'), give "
+            "a FULL profile of the top herb using every field that the record "
+            "provides, under these headings, skipping any that are empty:\n"
+            "  Names / Family | Description | Used for | Parts used | Dosage | "
+            "Contraindications | Medical properties | Compounds | Edible parts | "
+            "Native distribution | Conservation status | Source\n"
+            "For a narrow question (only dosage, or only safety), answer just "
+            "that point instead of the full profile.\n\n"
             f"=== HERB RECORDS ===\n{context_text}\n{safety}\n\n"
             f"=== USER QUESTION ===\n{query}\n\n=== ANSWER ==="
         )
@@ -325,31 +365,89 @@ class HerbRAGPipeline:
             if not top:
                 return FALLBACK_ANSWER
             note = ("\n\n[Note: Llama 3.2 / Ollama is not available, so this is a "
-                    "template answer built directly from the retrieved records.]")
-            return (
-                f"Based on the knowledge base, {top.get('herb_name_sinhala')} "
-                f"(English: {top.get('herb_name_english')}) is traditionally used for: "
-                f"{top.get('treatment_for')}. Dosage: {top.get('dosage')} "
-                f"Please consult a qualified Ayurvedic or medical practitioner "
-                f"before personal use." + note
-            )
+                    "template answer built directly from the retrieved records. "
+                    "Start Ollama to get a generated answer.]")
+
+            names = f"{top.get('herb_name_sinhala')}"
+            extra = ", ".join(x for x in (top.get("herb_name_english"),
+                                          top.get("herb_name_latin")) if x)
+            if extra:
+                names += f" ({extra})"
+
+            # Show every field the record actually has, skipping empty ones.
+            fields = [
+                ("Family", "family"),
+                ("Also known as", "synonyms"),
+                ("Description", "description"),
+                ("Used for", "treatment_for"),
+                ("Parts used in treatment", "parts_used_in_treatment"),
+                ("Dosage", "dosage"),
+                ("Contraindications", "contraindications"),
+                ("Medical properties", "medical_properties"),
+                ("Compounds", "compounds"),
+                ("Edible parts", "edible_parts"),
+                ("Native distribution", "native_distribution"),
+                ("Conservation status", "conservation_status"),
+            ]
+            lines = [f"{names}", ""]
+            for label, key in fields:
+                val = str(top.get(key, "")).strip()
+                if val:
+                    lines.append(f"{label}: {val}")
+            lines.append("")
+            lines.append(f"Source: {top.get('source')} ({top.get('source_type')})")
+            lines.append("")
+            lines.append("Safety note: please consult a qualified Ayurvedic or "
+                         "medical practitioner before personal use.")
+            return "\n".join(lines) + note
 
     # ----- Orchestrator ----------------------------------------------------
     OUT_OF_SCOPE_THRESHOLD = 0.30  # top FAISS score below this = not a herb question
+
+    # Words that show the user is referring back to the previous herb
+    # ("tell me more about that", "what are its compounds").
+    _REFERRING_WORDS = {"that", "it", "its", "this", "more", "else", "also",
+                        "them", "they", "same", "further", "detail", "details"}
+
+    def resolve_reference(self, query: str, last_herb: str):
+        """
+        Turn a follow-up like "give me more details about that" into
+        "... about Ranawara", so retrieval has something to search for.
+
+        Only fires when the query does NOT already name a herb and does
+        contain a referring word, so normal questions are left alone.
+        """
+        if not last_herb:
+            return query, None
+        q = query.lower()
+        names_a_herb = any(
+            re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index
+        )
+        if names_a_herb:
+            return query, None
+        if not (set(re.findall(r"[a-z]+", q)) & self._REFERRING_WORDS):
+            return query, None
+        return f"{query} about {last_herb}", last_herb
 
     def is_out_of_scope(self, query: str) -> bool:
         """Greetings/off-topic queries retrieve nothing relevant (low score)."""
         top = self.retrieve(query, k=1)
         return (not top) or top[0]["semantic_score"] < self.OUT_OF_SCOPE_THRESHOLD
 
-    def answer_query(self, query, health_context=None):
+    def answer_query(self, query, health_context=None, last_herb=None):
         """
         Full pipeline. If the query needs health context and none is supplied,
         returns the follow-up questions instead of a final answer.
+
+        `last_herb` is the herb discussed in the previous turn; it lets
+        follow-ups such as "tell me more about that" work.
         """
         # Fix misspelled herb names first ("kohoba" -> "Kohomba"), otherwise
         # semantic search has no correct name to anchor on.
         query, corrections = self.correct_herb_names(query)
+
+        # Resolve "that"/"it" back to the herb from the previous turn.
+        query, followed_up_on = self.resolve_reference(query, last_herb)
 
         # Out-of-scope check BEFORE intent/health-context, so greetings like
         # "how are u?" don't trigger the safety questionnaire.
@@ -399,6 +497,7 @@ class HerbRAGPipeline:
             "type": "answer",
             "intent": intent,
             "corrections": corrections,
+            "followed_up_on": followed_up_on,
             "answer": answer,
             "risk": risk,
             "sources": [
