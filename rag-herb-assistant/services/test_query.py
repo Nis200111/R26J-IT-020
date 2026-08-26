@@ -70,6 +70,11 @@ def main():
         # Pass the remembered context so follow-ups are not repeated.
         result = pipe.answer_query(query, health_context=session_context)
 
+        # Tell the user if we corrected a misspelled herb name.
+        if result.get("corrections"):
+            for typed, proper in result["corrections"]:
+                print(f"\n  [Did you mean '{proper}'? Showing results for '{proper}'.]")
+
         # Off-topic query: answer politely, no questionnaire.
         if result["type"] == "out_of_scope":
             print(f"\nAssistant: {result['answer']}\n")
@@ -93,7 +98,11 @@ def main():
         print(f"\nAnswer:\n{result['answer']}")
         print("\nSources:")
         for s in result["sources"]:
-            print(f"   - {s['herb']}  ({s['source']} | {s['source_type']})  "
+            # Sinhala name first, then English / Latin.
+            name = s["herb"] or s["herb_english"]
+            others = ", ".join(x for x in (s["herb_english"], s["herb_latin"]) if x)
+            label = f"{name} ({others})" if others else name
+            print(f"   - {label}  [{s['source']} | {s['source_type']}]  "
                   f"score={s['score']}")
         print("=" * 60 + "\n")
 
