@@ -45,8 +45,8 @@ export default function Footer() {
               <h4 className="text-sm font-semibold text-emerald-400 uppercase tracking-widest">Resources</h4>
               <div className="mt-1 h-[1px] w-6 bg-emerald-500/50"></div>
               <ul className="mt-4 space-y-2 text-xs text-zinc-400">
-                <li><a href="/plant-identifier" className="hover:text-emerald-400 transition-all hover:translate-x-1 inline-block">Plant Identifier</a></li>
-                <li><a href="/plant-disease-detection" className="hover:text-emerald-400 transition-all hover:translate-x-1 inline-block">Disease Detection</a></li>
+                <li><a href="/member1" className="hover:text-emerald-400 transition-all hover:translate-x-1 inline-block">Plant Identifier</a></li>
+                <li><a href="/member3" className="hover:text-emerald-400 transition-all hover:translate-x-1 inline-block">Disease Detection</a></li>
               </ul>
             </div>
 

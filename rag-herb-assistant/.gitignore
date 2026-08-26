@@ -17,3 +17,5 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+data/session_context.json
+data/query_log.csv
