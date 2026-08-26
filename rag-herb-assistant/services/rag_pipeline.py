@@ -18,8 +18,10 @@ It loads all the artifacts produced by notebooks 01-04. The Streamlit app
 """
 
 import os
+import re
 import json
 import pickle
+import difflib
 
 import numpy as np
 import pandas as pd
@@ -51,6 +53,21 @@ OLLAMA_MODEL = "llama3.2"
 FALLBACK_ANSWER = ("Verified information is not available in the current "
                    "knowledge base for this question.")
 
+# Words that must never be "corrected" into a herb name.
+_STOPWORDS = {
+    "what", "which", "where", "when", "about", "used", "uses", "using", "safe",
+    "safety", "dose", "doses", "dosage", "take", "taking", "want", "know",
+    "tell", "give", "good", "best", "help", "helps", "with", "from", "this",
+    "that", "there", "they", "have", "has", "does", "doing", "your", "you",
+    "can", "could", "should", "would", "herb", "herbs", "herbal", "plant",
+    "plants", "medicine", "medicinal", "medication", "treatment", "disease",
+    "diseases", "during", "while", "pregnant", "pregnancy", "breastfeeding",
+    "diabetes", "diabetic", "kidney", "liver", "heart", "blood", "pressure",
+    "child", "children", "adult", "elderly", "properties", "property",
+    "contraindication", "contraindications", "side", "effects", "please",
+    "the", "and", "for", "are", "is", "of", "in", "on", "to", "a", "an", "i",
+}
+
 
 class HerbRAGPipeline:
     def __init__(self):
@@ -73,6 +90,53 @@ class HerbRAGPipeline:
             self.target_encoder = pickle.load(f)
         with open(FEAT_COLS_PATH, "rb") as f:
             self.feature_columns = pickle.load(f)
+
+        # Herb-name lexicon for spelling correction (Sinhala/English/Latin).
+        # Sinhala herb names have many romanised spellings (Kohomba / Kohoba),
+        # so we fuzzy-match query words against every known name.
+        self._lexicon = {}       # lowercase name -> original name
+        self._name_index = {}    # lowercase name -> [positions in metadata]
+        for pos, rec in enumerate(self.metadata):
+            for key in ("herb_name_sinhala", "herb_name_english", "herb_name_latin"):
+                name = str(rec.get(key, "")).strip()
+                if len(name) >= 4:
+                    self._lexicon.setdefault(name.lower(), name)
+                    self._name_index.setdefault(name.lower(), []).append(pos)
+            for syn in str(rec.get("synonyms", "")).split(";"):
+                syn = syn.strip()
+                if len(syn) >= 4:
+                    self._lexicon.setdefault(syn.lower(), syn)
+                    self._name_index.setdefault(syn.lower(), []).append(pos)
+
+    # ----- 0. Herb-name spelling correction --------------------------------
+    HERB_MATCH_CUTOFF = 0.75  # similarity needed to accept a correction
+
+    def correct_herb_names(self, query: str):
+        """
+        Fuzzy-match query words against the herb lexicon and fix misspellings
+        (e.g. "kohoba" -> "Kohomba"). Returns (corrected_query, corrections)
+        where corrections is a list of (typed_word, corrected_name).
+
+        A word is only corrected when it is not already a known name, is not a
+        common English/medical word, and is similar enough to exactly one herb.
+        """
+        words = re.findall(r"[A-Za-z]+", query)
+        corrections = []
+        corrected = query
+
+        for w in words:
+            wl = w.lower()
+            if len(wl) < 4 or wl in _STOPWORDS or wl in self._lexicon:
+                continue
+            match = difflib.get_close_matches(
+                wl, self._lexicon.keys(), n=1, cutoff=self.HERB_MATCH_CUTOFF
+            )
+            if match:
+                proper = self._lexicon[match[0]]
+                corrections.append((w, proper))
+                corrected = re.sub(rf"\b{re.escape(w)}\b", proper, corrected)
+
+        return corrected, corrections
 
     # ----- 1. Intent -------------------------------------------------------
     def classify_intent(self, query: str) -> str:
@@ -98,19 +162,60 @@ class HerbRAGPipeline:
             results.append(rec)
         return results
 
+    def lookup_by_name(self, query: str) -> list:
+        """
+        Hybrid (lexical) retrieval: return records for any herb explicitly
+        named in the query.
+
+        Pure semantic search can miss the named herb entirely -- in
+        "Is Kohomba safe during pregnancy?" the words "safe during pregnancy"
+        dominate the embedding and every herb has similar safety text, so the
+        Kohomba record can fall outside the top-k. Looking the name up directly
+        guarantees it reaches the re-ranker.
+        """
+        q_lower = query.lower()
+        q_emb = self.embedder.encode(
+            [query], convert_to_numpy=True, normalize_embeddings=True
+        ).astype("float32")[0]
+
+        hits, seen = [], set()
+        for name, positions in self._name_index.items():
+            if re.search(rf"\b{re.escape(name)}\b", q_lower):
+                for pos in positions:
+                    if pos in seen:
+                        continue
+                    seen.add(pos)
+                    rec = dict(self.metadata[pos])
+                    # true cosine score, so it ranks fairly against FAISS hits
+                    vec = self.index.reconstruct(int(pos))
+                    rec["semantic_score"] = float(np.dot(q_emb, vec))
+                    hits.append(rec)
+        return hits
+
     # ----- 4. Re-ranking ---------------------------------------------------
     def rerank(self, query: str, candidates: list, top_n: int = 4) -> list:
-        """Boost candidates whose herb name / uses / properties overlap the query."""
-        q_tokens = set(query.lower().split())
+        """
+        Re-order retrieved records by relevance to the query:
+        - a strong boost when the query names this herb exactly, so a named
+          herb always outranks merely similar ones;
+        - a smaller boost for word overlap with uses / properties.
+        """
+        q_lower = query.lower()
+        q_tokens = set(q_lower.split())
         for c in candidates:
-            text = " ".join([
-                str(c.get("herb_name_english", "")),
-                str(c.get("herb_name_sinhala", "")),
+            names = [str(c.get(k, "")).lower()
+                     for k in ("herb_name_english", "herb_name_sinhala", "herb_name_latin")]
+            name_hit = any(n and n in q_lower for n in names)
+
+            text = " ".join(names + [
                 str(c.get("treatment_for", "")),
                 str(c.get("medical_properties", "")),
             ]).lower()
             overlap = sum(1 for t in q_tokens if len(t) > 2 and t in text)
-            c["rerank_score"] = c["semantic_score"] + 0.1 * overlap
+
+            c["rerank_score"] = (c["semantic_score"]
+                                 + (0.5 if name_hit else 0.0)
+                                 + 0.1 * overlap)
         ranked = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
         return ranked[:top_n]
 
@@ -165,7 +270,9 @@ class HerbRAGPipeline:
     # ----- 6. Answer generation -------------------------------------------
     def _build_prompt(self, query, records, health_context, risk):
         context_text = "\n\n".join(
-            f"Herb: {r.get('herb_name_english')} ({r.get('herb_name_sinhala')})\n"
+            f"Herb (Sinhala): {r.get('herb_name_sinhala')}\n"
+            f"English name: {r.get('herb_name_english')}\n"
+            f"Latin name: {r.get('herb_name_latin')}\n"
             f"Used for: {r.get('treatment_for')}\n"
             f"Dosage: {r.get('dosage')}\n"
             f"Contraindications: {r.get('contraindications')}\n"
@@ -180,8 +287,23 @@ class HerbRAGPipeline:
         return (
             "You are a Sri Lankan medicinal herb knowledge assistant.\n"
             "Answer the user's question ONLY using the herb records provided below.\n"
-            "If the answer is not in the records, reply exactly: "
-            f"\"{FALLBACK_ANSWER}\"\n"
+            "Always name a herb with its SINHALA name first, followed by the "
+            "English and Latin names in brackets, "
+            "for example: 'Kohomba (English: Neem, Latin: Azadirachta indica)'.\n"
+            "STRICT GROUNDING RULES:\n"
+            "1. Every medical claim you make must be copied from the records. "
+            "Do NOT add reasons, mechanisms, or effects that are not written "
+            "there (for example, do not explain WHY a herb is unsafe unless the "
+            "records say so).\n"
+            "2. If the records do not mention the specific condition asked "
+            "about, say exactly: 'The knowledge base does not record any "
+            "specific contraindication for this condition.' Then list only the "
+            "contraindications that ARE recorded, word for word.\n"
+            "3. Never conclude that a herb is safe or unsafe for a condition "
+            "that the records do not mention. Say the information is not "
+            "recorded and refer the user to a practitioner.\n"
+            "4. If the records are about completely different herbs than the "
+            f"one asked about, reply exactly: \"{FALLBACK_ANSWER}\"\n"
             "Always add a short safety note telling the user to consult a qualified "
             "Ayurvedic or medical practitioner for personal use.\n\n"
             f"=== HERB RECORDS ===\n{context_text}\n{safety}\n\n"
@@ -205,8 +327,8 @@ class HerbRAGPipeline:
             note = ("\n\n[Note: Llama 3.2 / Ollama is not available, so this is a "
                     "template answer built directly from the retrieved records.]")
             return (
-                f"Based on the knowledge base, {top.get('herb_name_english')} "
-                f"({top.get('herb_name_sinhala')}) is traditionally used for: "
+                f"Based on the knowledge base, {top.get('herb_name_sinhala')} "
+                f"(English: {top.get('herb_name_english')}) is traditionally used for: "
                 f"{top.get('treatment_for')}. Dosage: {top.get('dosage')} "
                 f"Please consult a qualified Ayurvedic or medical practitioner "
                 f"before personal use." + note
@@ -225,12 +347,17 @@ class HerbRAGPipeline:
         Full pipeline. If the query needs health context and none is supplied,
         returns the follow-up questions instead of a final answer.
         """
+        # Fix misspelled herb names first ("kohoba" -> "Kohomba"), otherwise
+        # semantic search has no correct name to anchor on.
+        query, corrections = self.correct_herb_names(query)
+
         # Out-of-scope check BEFORE intent/health-context, so greetings like
         # "how are u?" don't trigger the safety questionnaire.
         if self.is_out_of_scope(query):
             return {
                 "type": "out_of_scope",
                 "intent": None,
+                "corrections": corrections,
                 "answer": ("I'm a Sri Lankan medicinal herb knowledge assistant. "
                            "Please ask me about herbs, their uses, dosage, "
                            "properties, or safety — for example: "
@@ -246,10 +373,19 @@ class HerbRAGPipeline:
             return {
                 "type": "need_context",
                 "intent": intent,
+                "corrections": corrections,
                 "followup_questions": self.followup_questions(query, intent),
             }
 
+        # Hybrid retrieval: semantic (FAISS) + lexical (exact herb-name lookup),
+        # so a herb named in the query can never be missed.
         candidates = self.retrieve(query, k=8)
+        seen_ids = {c.get("herb_id") for c in candidates}
+        for rec in self.lookup_by_name(query):
+            if rec.get("herb_id") not in seen_ids:
+                seen_ids.add(rec.get("herb_id"))
+                candidates.append(rec)
+
         records = self.rerank(query, candidates, top_n=4)
 
         risk = None
@@ -262,10 +398,14 @@ class HerbRAGPipeline:
         return {
             "type": "answer",
             "intent": intent,
+            "corrections": corrections,
             "answer": answer,
             "risk": risk,
             "sources": [
-                {"herb": r.get("herb_name_english"), "source": r.get("source"),
+                {"herb": r.get("herb_name_sinhala"),
+                 "herb_english": r.get("herb_name_english"),
+                 "herb_latin": r.get("herb_name_latin"),
+                 "source": r.get("source"),
                  "source_type": r.get("source_type"),
                  "score": round(r.get("rerank_score", 0), 3)}
                 for r in records
