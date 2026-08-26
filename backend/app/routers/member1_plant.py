@@ -72,7 +72,7 @@ def run_prediction(pil_image: Image.Image):
     }
 
 
-@router.post("/predict")
+@router.post("/predict", summary="Authenticate Medicinal Plant", description="Upload an image of a medicinal plant leaf to authenticate its species and verify if it is genuine.")
 async def predict(file: UploadFile = File(...)):
     if model is None:
         return {"error": True, "message": f"Model unavailable: {model_load_error}"}

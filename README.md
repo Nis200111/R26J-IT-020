@@ -20,6 +20,9 @@ cd frontend
 npm install
 npm run dev
 
+## Features
+- Medicinal Plant Authentication System (Deep Learning based genuineness verification)
+- Plant Disease Detection System
 ## Research Components
 
 Our project integrates four advanced AI and Data Science systems to preserve, identify, and cultivate Sri Lankan indigenous medical knowledge:
