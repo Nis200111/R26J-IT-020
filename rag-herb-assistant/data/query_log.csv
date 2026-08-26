@@ -6,3 +6,4 @@ timestamp,query,intent,risk_level,result_type
 2026-08-26T11:38:26,tell me about ranawara,herb-property,,answer
 2026-08-26T11:41:46,give me a more details about that,,,out_of_scope
 2026-08-26T11:57:49,tell me about ranawara,herb-property,,answer
+2026-08-26T12:06:59,tell me about ranawara,herb-property,,answer
