@@ -14,12 +14,12 @@ export default function ExplainSection() {
               <Leaf className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-bold tracking-tight text-zinc-800 group-hover:text-emerald-800 transition-colors duration-300">
-              Medicinal Plant Disease Detection
+              Medicinal Leaf Health Detection
             </h2>
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-500 group-hover:text-zinc-600 transition-colors duration-300">
-            AI-powered dual-stage analysis that classifies plant diseases and quantifies infection spread at the pixel level — producing a Medicinal Quality Score to ensure only potent leaves reach production.
+            AI-powered leaf health classification using EfficientNetB4 deep learning — determines whether a medicinal leaf is healthy or diseased to verify its suitability for Ayurvedic medicine production.
           </p>
 
           <div className="space-y-3 pt-2">
@@ -33,18 +33,18 @@ export default function ExplainSection() {
               <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">U-NET SEGMENTATION</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">HEALTHY vs DISEASED DETECTION</span>
             </div>
             <div className="flex items-center gap-3">
               <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">QUALITY SCORING</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">AYURVEDIC QUALITY VERIFICATION</span>
             </div>
           </div>
 
           <div className="mt-auto pt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-8px] group-hover:translate-x-0">
-            ANALYZE A PLANT
+            ANALYZE A LEAF
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Camera, Upload, Microscope, Info, Leaf, ChevronRight } from "lucide-react";
+import { Camera, Upload, Microscope, Leaf, Shield, ChevronRight } from "lucide-react";
 import ImageUploader from "@/components/features/member3/ImageUploader";
 import CameraCapture from "@/components/features/member3/CameraCapture";
 import ResultDisplay from "@/components/features/member3/ResultDisplay";
@@ -56,11 +56,11 @@ export default function PlantDiseaseDetectionPage() {
   return (
     <div className="min-h-screen bg-[#faf9f6]">
       <PageHeader
-        eyebrow="Member 3 · Dual-Stage Analysis"
-        title="Medicinal Plant"
-        accent="Disease Detection"
+        eyebrow="Member 3 · Leaf Health Classification"
+        title="Medicinal Leaf"
+        accent="Health Detection"
         image="/herbs_banner.png"
-        description="Upload or capture a medicinal leaf image. Our dual-stage AI (EfficientNetB4 + U-Net) classifies the disease and calculates an exact Medicinal Quality Score."
+        description="Upload or capture a medicinal leaf image. Our EfficientNetB4 deep learning model classifies whether the leaf is healthy or diseased, determining its suitability for Ayurvedic medicine production."
       />
 
       <div className="container mx-auto px-6 py-10">
@@ -68,8 +68,8 @@ export default function PlantDiseaseDetectionPage() {
           <div className="mb-6 flex flex-wrap gap-3">
             {[
               { icon: <Microscope className="h-3.5 w-3.5" />, text: "EfficientNetB4 Classifier" },
-              { icon: <Info className="h-3.5 w-3.5" />, text: "U-Net Pixel Segmentation" },
-              { icon: <Leaf className="h-3.5 w-3.5" />, text: "Precision Quality Grading" },
+              { icon: <Leaf className="h-3.5 w-3.5" />, text: "Healthy vs Diseased Detection" },
+              { icon: <Shield className="h-3.5 w-3.5" />, text: "Ayurvedic Quality Verification" },
             ].map((p) => (
               <span
                 key={p.text}
@@ -132,11 +132,11 @@ export default function PlantDiseaseDetectionPage() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="font-serif text-xl font-bold text-zinc-900">Analyzing Leaf...</p>
-                <p className="mt-2 text-sm text-zinc-500">Running EfficientNetB4 classification &amp; U-Net segmentation</p>
+                <p className="font-serif text-xl font-bold text-zinc-900">Analyzing Leaf Health...</p>
+                <p className="mt-2 text-sm text-zinc-500">Running EfficientNetB4 classification model</p>
               </div>
               <div className="flex flex-col gap-2 w-full max-w-xs">
-                {["Preprocessing image", "Classifying disease (EfficientNetB4)", "Segmenting affected area (U-Net)", "Calculating quality score"].map(
+                {["Preprocessing image", "Resizing to 224×224", "Running EfficientNetB4 inference", "Generating health verdict"].map(
                   (step, i) => (
                     <div key={step} className="flex items-center gap-3">
                       <div className="h-1.5 w-1.5 rounded-full bg-[#c5a880] animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
