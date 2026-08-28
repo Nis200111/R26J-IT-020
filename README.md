@@ -2,6 +2,7 @@
 
 Multi-Modal Framework for Preserving Sri Lankan Indigenous Medical Knowledge.
 
+
 ## Project Structure
 - frontend/: Next.js application for the user interface.
 - backend/: FastAPI application for handling models and requests.
