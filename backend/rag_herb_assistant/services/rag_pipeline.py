@@ -426,7 +426,9 @@ class HerbRAGPipeline:
             return query, None
         if not (set(re.findall(r"[a-z]+", q)) & self._REFERRING_WORDS):
             return query, None
-        return f"{query} about {last_herb}", last_herb
+        # Append the bare name (not "about <name>") so the phrasing stays
+        # natural and lookup_by_name can match it.
+        return f"{query} {last_herb}", last_herb
 
     def is_out_of_scope(self, query: str) -> bool:
         """Greetings/off-topic queries retrieve nothing relevant (low score)."""
@@ -450,7 +452,9 @@ class HerbRAGPipeline:
 
         # Out-of-scope check BEFORE intent/health-context, so greetings like
         # "how are u?" don't trigger the safety questionnaire.
-        if self.is_out_of_scope(query):
+        # A resolved follow-up already names a known herb, so it is in scope by
+        # definition -- only run the out-of-scope check on unresolved queries.
+        if followed_up_on is None and self.is_out_of_scope(query):
             return {
                 "type": "out_of_scope",
                 "intent": None,
