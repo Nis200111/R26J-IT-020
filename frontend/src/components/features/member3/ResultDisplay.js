@@ -41,9 +41,8 @@ function AnimatedConfidence({ value, isHealthy }) {
 
   return (
     <span
-      className={`text-5xl font-bold tabular-nums tracking-tight ${
-        isHealthy ? "text-emerald-600" : "text-red-500"
-      }`}
+      className={`text-5xl font-bold tabular-nums tracking-tight ${isHealthy ? "text-emerald-600" : "text-red-500"
+        }`}
     >
       {display.toFixed(1)}
       <span className="text-2xl font-medium text-zinc-400">%</span>
@@ -105,7 +104,7 @@ const REMEDIES_DATA = {
     organicTitle: "කාබනික සහ වගා පාලන නිර්දේශ (Organic & Cultural Management):",
     organic: [
       "වගා පාත්තිවල ජලය රැඳී සිටීමට ඉඩ නොදෙන්න (හොඳ ජලවහනයක් පවත්වා ගන්න).",
-      "වේලන ලද කොහොඹ පුන්නක්කු පසට එකතු කරන්න."
+      "වේලන ලද කොහොඹ පුන්නක්කු (කොහොඹ ඇටවලින් කොහොඹ තෙල් මිරිකා හැරියාට පස්සේ ඉතිරි වන රොඩු කොටස වේලලා සකස් කරගන්නා වටිනා කාබනික පොහොරක් සහ ස්වාභාවික පළිබෝධ/දිලීර නාශකයක්.) පසට එකතු කරන්න."
     ],
     chemicalTitle: "රසායනික පාලන ක්‍රම (Chemical Control - Optional):",
     chemical: [
@@ -195,27 +194,24 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
     <div className="flex flex-col gap-6 animate-fade-in-down">
       {/* Hero verdict card */}
       <div
-        className={`relative overflow-hidden rounded-3xl border-2 p-8 transition-all ${
-          isHealthy
+        className={`relative overflow-hidden rounded-3xl border-2 p-8 transition-all ${isHealthy
             ? "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30"
             : "border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50/30"
-        }`}
+          }`}
       >
         {/* Decorative glow */}
         <div
-          className={`absolute -top-20 -right-20 h-60 w-60 rounded-full blur-3xl opacity-20 ${
-            isHealthy ? "bg-emerald-400" : "bg-red-400"
-          }`}
+          className={`absolute -top-20 -right-20 h-60 w-60 rounded-full blur-3xl opacity-20 ${isHealthy ? "bg-emerald-400" : "bg-red-400"
+            }`}
         />
 
         <div className="relative flex flex-col sm:flex-row items-start gap-6">
           {/* Icon */}
           <div
-            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm ${
-              isHealthy
+            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm ${isHealthy
                 ? "bg-emerald-100 text-emerald-600"
                 : "bg-red-100 text-red-500"
-            }`}
+              }`}
           >
             {isHealthy ? (
               <CheckCircle2 className="h-8 w-8" />
@@ -227,11 +223,10 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                  isHealthy
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${isHealthy
                     ? "bg-emerald-100 text-emerald-700"
                     : "bg-red-100 text-red-700"
-                }`}
+                  }`}
               >
                 {isHealthy ? (
                   <Sparkles className="h-3 w-3" />
@@ -248,9 +243,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             </div>
 
             <h2
-              className={`font-serif text-2xl font-bold leading-snug ${
-                isHealthy ? "text-emerald-900" : "text-red-900"
-              }`}
+              className={`font-serif text-2xl font-bold leading-snug ${isHealthy ? "text-emerald-900" : "text-red-900"
+                }`}
             >
               {isHealthy
                 ? "Leaf Approved for Ayurvedic Production"
@@ -258,9 +252,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             </h2>
 
             <p
-              className={`text-sm leading-relaxed font-light ${
-                isHealthy ? "text-emerald-700" : "text-red-700"
-              }`}
+              className={`text-sm leading-relaxed font-light ${isHealthy ? "text-emerald-700" : "text-red-700"
+                }`}
             >
               {result.suitability}
             </p>
@@ -323,28 +316,25 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
               ].map((item) => (
                 <div key={item.g} className="flex-1">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      item.g === grade.grade
+                    className={`h-2 rounded-full transition-all ${item.g === grade.grade
                         ? `${item.color} shadow-sm scale-y-150`
                         : "bg-zinc-200"
-                    }`}
+                      }`}
                   />
                   <div className="flex items-center justify-center gap-1 mt-1.5">
                     <span
-                      className={`text-[9px] font-bold ${
-                        item.g === grade.grade
+                      className={`text-[9px] font-bold ${item.g === grade.grade
                           ? "text-zinc-800"
                           : "text-zinc-400"
-                      }`}
+                        }`}
                     >
                       {item.g}
                     </span>
                     <span
-                      className={`text-[8px] hidden sm:inline ${
-                        item.g === grade.grade
+                      className={`text-[8px] hidden sm:inline ${item.g === grade.grade
                           ? "text-zinc-600 font-semibold"
                           : "text-zinc-400"
-                      }`}
+                        }`}
                     >
                       {item.label}
                     </span>
@@ -412,9 +402,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
               />
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                 <div
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                    isHealthy ? "bg-emerald-500" : "bg-red-500"
-                  }`}
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isHealthy ? "bg-emerald-500" : "bg-red-500"
+                    }`}
                   style={{ width: `${result.confidence}%` }}
                 />
               </div>
@@ -423,18 +412,16 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             {/* Classification */}
             <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
               <Leaf
-                className={`h-5 w-5 shrink-0 ${
-                  isHealthy ? "text-emerald-500" : "text-red-400"
-                }`}
+                className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-500" : "text-red-400"
+                  }`}
               />
               <div>
                 <p className="text-xs font-bold text-zinc-800">
                   Classification
                 </p>
                 <p
-                  className={`text-sm font-semibold ${
-                    isHealthy ? "text-emerald-600" : "text-red-600"
-                  }`}
+                  className={`text-sm font-semibold ${isHealthy ? "text-emerald-600" : "text-red-600"
+                    }`}
                 >
                   {isHealthy ? "Healthy" : diseaseLabel}
                 </p>
@@ -444,18 +431,16 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             {/* Suitability */}
             <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
               <Shield
-                className={`h-5 w-5 shrink-0 ${
-                  isHealthy ? "text-emerald-500" : "text-red-400"
-                }`}
+                className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-500" : "text-red-400"
+                  }`}
               />
               <div>
                 <p className="text-xs font-bold text-zinc-800">
                   Ayurvedic Suitability
                 </p>
                 <p
-                  className={`text-xs font-medium ${
-                    isHealthy ? "text-emerald-600" : "text-red-600"
-                  }`}
+                  className={`text-xs font-medium ${isHealthy ? "text-emerald-600" : "text-red-600"
+                    }`}
                 >
                   {isHealthy ? "Approved for Production" : "Not Suitable"}
                 </p>
@@ -494,9 +479,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                   <div key={className}>
                     <div className="flex items-center justify-between mb-1">
                       <span
-                        className={`text-xs font-semibold ${
-                          isTop ? "text-zinc-900" : "text-zinc-500"
-                        }`}
+                        className={`text-xs font-semibold ${isTop ? "text-zinc-900" : "text-zinc-500"
+                          }`}
                       >
                         {displayName}
                         {isTop && (
@@ -506,20 +490,18 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                         )}
                       </span>
                       <span
-                        className={`text-xs font-bold tabular-nums ${
-                          isTop ? "text-zinc-900" : "text-zinc-400"
-                        }`}
+                        className={`text-xs font-bold tabular-nums ${isTop ? "text-zinc-900" : "text-zinc-400"
+                          }`}
                       >
                         {prob.toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          isTop
+                        className={`h-full rounded-full transition-all duration-700 ${isTop
                             ? PROB_BAR_COLORS[className] || "bg-zinc-400"
                             : "bg-zinc-300"
-                        }`}
+                          }`}
                         style={{ width: `${prob}%` }}
                       />
                     </div>
@@ -614,16 +596,14 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
 
       {/* Suitability message banner */}
       <div
-        className={`flex items-center gap-4 rounded-2xl border p-5 ${
-          isHealthy
+        className={`flex items-center gap-4 rounded-2xl border p-5 ${isHealthy
             ? "border-emerald-200 bg-emerald-50"
             : "border-red-200 bg-red-50"
-        }`}
+          }`}
       >
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-            isHealthy ? "bg-emerald-100" : "bg-red-100"
-          }`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isHealthy ? "bg-emerald-100" : "bg-red-100"
+            }`}
         >
           {isHealthy ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -633,18 +613,16 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
         </div>
         <div>
           <p
-            className={`text-sm font-bold ${
-              isHealthy ? "text-emerald-800" : "text-red-800"
-            }`}
+            className={`text-sm font-bold ${isHealthy ? "text-emerald-800" : "text-red-800"
+              }`}
           >
             {isHealthy
               ? "✅ Quality Verified — Safe for Ayurvedic Medicine Production"
               : "⚠️ Quality Warning — Do Not Use for Ayurvedic Medicine Production"}
           </p>
           <p
-            className={`text-xs mt-0.5 ${
-              isHealthy ? "text-emerald-600" : "text-red-600"
-            }`}
+            className={`text-xs mt-0.5 ${isHealthy ? "text-emerald-600" : "text-red-600"
+              }`}
           >
             {isHealthy
               ? "This leaf has passed the AI health screening and is certified for medicinal use."
