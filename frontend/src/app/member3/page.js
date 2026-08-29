@@ -136,7 +136,7 @@ export default function PlantDiseaseDetectionPage() {
                 <p className="mt-2 text-sm text-zinc-500">Running EfficientNetB4 classification model</p>
               </div>
               <div className="flex flex-col gap-2 w-full max-w-xs">
-                {["Preprocessing image", "Resizing to 224×224", "Running EfficientNetB4 inference", "Generating health verdict"].map(
+                {["Preprocessing image (224×224)", "Running EfficientNetB4 inference", "Computing AMS Quality Grade", "Preparing analysis report"].map(
                   (step, i) => (
                     <div key={step} className="flex items-center gap-3">
                       <div className="h-1.5 w-1.5 rounded-full bg-[#c5a880] animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />

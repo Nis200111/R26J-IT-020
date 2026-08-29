@@ -9,6 +9,7 @@ bcrypt==4.0.1
 python-jose[cryptography]
 pydantic[email]
 tensorflow
+matplotlib
 
 # Member 2 - RAG herb knowledge assistant
 sentence-transformers
