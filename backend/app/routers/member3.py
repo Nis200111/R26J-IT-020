@@ -14,9 +14,11 @@ CLASS_LABELS = ["Anthracnose", "Bacterial_Leaf_Spot", "Healthy", "Rot", "Rust"]
 
 model = None
 model_load_error = None
+tf = None
 
 try:
-    import tensorflow as tf
+    import tensorflow as _tf
+    tf = _tf
     if os.path.exists(MODEL_PATH):
         model = tf.keras.models.load_model(MODEL_PATH)
         print(f"[Member3] Model loaded successfully from {MODEL_PATH}")
@@ -36,6 +38,52 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
     img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
     img_array = np.expand_dims(img_array, axis=0)  # add batch dimension
     return img_array
+
+
+# ─────────────────────────────────────────────
+# Ayurvedic Quality Grading (AMS Framework)
+# ─────────────────────────────────────────────
+def get_ayurvedic_grade(predicted_class: str, confidence: float) -> dict:
+    """
+    Ayurvedic Medicinal Suitability (AMS) Grading.
+    Maps disease classification + confidence to a quality grade
+    based on traditional Ayurvedic medicinal production standards.
+    """
+    if predicted_class == "Healthy":
+        if confidence > 0.85:
+            return {
+                "grade": "A",
+                "title": "Premium Medicinal Quality",
+                "status": "Approved",
+                "description": "This leaf exhibits excellent health with high confidence. Fully suitable for all forms of Ayurvedic medicinal preparations including internal consumption (kashaya, arishtam) and topical applications.",
+                "color": "emerald",
+            }
+        elif confidence > 0.65:
+            return {
+                "grade": "B",
+                "title": "Acceptable Medicinal Quality",
+                "status": "Conditional Approval",
+                "description": "This leaf appears healthy but with moderate confidence. Recommended for external applications (lepa, taila) and processed preparations (decoction/drying). Manual inspection advised before internal preparations.",
+                "color": "amber",
+            }
+        else:
+            return {
+                "grade": "C",
+                "title": "Uncertain Quality",
+                "status": "Manual Review Required",
+                "description": "The model shows low confidence in its healthy classification. This leaf requires manual inspection by an experienced Ayurvedic practitioner before any medicinal use.",
+                "color": "orange",
+            }
+    else:
+        # Any disease detected (Rust, Rot, Anthracnose, Bacterial Leaf Spot) -> Strictly REJECTED (Grade D)
+        disease_name = predicted_class.replace('_', ' ')
+        return {
+            "grade": "D",
+            "title": f"Rejected — {disease_name} Detected",
+            "status": "Strictly Rejected",
+            "description": f"Infection detected ({disease_name}). In traditional Ayurvedic medicine, leaves with any signs of disease are strictly prohibited for pharmaceutical production to prevent microbial contamination and preserve therapeutic efficacy. Discard immediately.",
+            "color": "red",
+        }
 
 
 @router.post("/predict")
@@ -64,6 +112,9 @@ async def predict(file: UploadFile = File(...)):
         else:
             suitability = "This leaf should NOT be used for the production of Ayurvedic medicine."
 
+        # Ayurvedic Quality Grading (AMS)
+        grade_info = get_ayurvedic_grade(predicted_label, confidence)
+
         return {
             "error": False,
             "label": predicted_label,
@@ -75,6 +126,8 @@ async def predict(file: UploadFile = File(...)):
                 CLASS_LABELS[i]: round(float(prediction[0][i]) * 100, 2)
                 for i in range(len(CLASS_LABELS))
             },
+            # Novelty: Ayurvedic Quality Grade
+            "qualityGrade": grade_info,
         }
     except Exception as e:
         return {"error": True, "message": f"Prediction failed: {str(e)}"}
