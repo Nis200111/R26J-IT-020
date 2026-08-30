@@ -1,0 +1,14 @@
+{
+  "confidence_high": 0.81,
+  "confidence_low": 0.40,
+  "margin_low": 0.15,
+  "source": "run02 notebook, section 14 (validation sweep, target accuracy 95%)",
+  "notes": {
+    "test_accuracy": 0.8880208134651184,
+    "test_top3_accuracy": 0.9635416865348816,
+    "test_coverage_at_threshold": 0.8984375,
+    "test_accuracy_on_accepted": 0.9594202898550724,
+    "ood_auroc_max_softmax": 0.8824,
+    "ood_fpr_at_95tpr_max_softmax": 0.7194
+  }
+}
