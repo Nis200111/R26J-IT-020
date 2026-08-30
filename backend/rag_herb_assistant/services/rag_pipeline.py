@@ -98,6 +98,9 @@ class HerbRAGPipeline:
         with open(FEAT_COLS_PATH, "rb") as f:
             self.feature_columns = pickle.load(f)
 
+        # Built on the first safety question, then reused (see _explain_risk).
+        self._shap_explainer = None
+
         # Herb-name lexicon for spelling correction (Sinhala/English/Latin).
         # Sinhala herb names have many romanised spellings (Kohomba / Kohoba),
         # so we fuzzy-match query words against every known name.
@@ -272,6 +275,7 @@ class HerbRAGPipeline:
             return {
                 "risk_level": "Caution",
                 "top_factors": list(unknown_inputs.keys()),
+                "explanation": [],
                 "warning": (
                     f"The value(s) {details} are outside the system's training "
                     f"data, so an accurate risk prediction is not possible. "
@@ -284,11 +288,69 @@ class HerbRAGPipeline:
         pred = self.risk_model.predict(X)[0]
         level = self.target_encoder.inverse_transform([pred])[0]
 
-        # simple explanation via feature importance for this prediction
-        importances = self.risk_model.feature_importances_
-        order = np.argsort(importances)[::-1]
-        top_factors = [self.feature_columns[i] for i in order[:2]]
-        return {"risk_level": level, "top_factors": top_factors}
+        explanation = self._explain_risk(X, pred, ctx)
+        top_factors = [e["feature"] for e in explanation[:2]]
+        return {
+            "risk_level": level,
+            "top_factors": top_factors,
+            "explanation": explanation,
+        }
+
+    def _explain_risk(self, X, predicted_class, ctx) -> list:
+        """
+        Per-prediction SHAP explanation for one risk classification.
+
+        This replaces an earlier version that ranked features by the Random
+        Forest's GLOBAL `feature_importances_`. Those are a property of the
+        trained model, not of the input, so every prediction returned the same
+        two factors no matter what the patient context was. SHAP values are
+        computed for this specific row, so pregnancy and anticoagulant use now
+        produce genuinely different explanations.
+
+        Returns a list of {feature, value, impact}, strongest first.
+        """
+        try:
+            if self._shap_explainer is None:
+                import shap
+                # Built lazily: pipeline start-up is already slow, and a user who
+                # never asks a safety question never pays for this.
+                self._shap_explainer = shap.TreeExplainer(self.risk_model)
+
+            shap_values = self._shap_explainer.shap_values(X)
+
+            # shap returns a list-per-class on older versions and a 3-D array
+            # (rows, features, classes) on newer ones. Handle both.
+            if isinstance(shap_values, list):
+                contrib = np.asarray(shap_values[predicted_class])[0]
+            else:
+                arr = np.asarray(shap_values)
+                contrib = arr[0, :, predicted_class] if arr.ndim == 3 else arr[0]
+
+            order = np.argsort(np.abs(contrib))[::-1]
+            out = []
+            for i in order[:3]:
+                col = self.feature_columns[i]
+                # herb_name carries little safety meaning and has 1000+ levels;
+                # showing it would crowd out the factors that matter.
+                if col == "herb_name":
+                    continue
+                out.append({
+                    "feature": col,
+                    "value": ctx.get(col, ""),
+                    "impact": round(float(contrib[i]), 4),
+                })
+            return out
+        except Exception:
+            # Explainability must never break a safety answer. Fall back to the
+            # global importances rather than failing the whole request.
+            importances = self.risk_model.feature_importances_
+            order = np.argsort(importances)[::-1]
+            return [
+                {"feature": self.feature_columns[i],
+                 "value": ctx.get(self.feature_columns[i], ""),
+                 "impact": None}
+                for i in order[:2] if self.feature_columns[i] != "herb_name"
+            ]
 
     # ----- 6. Answer generation -------------------------------------------
     def _build_prompt(self, query, records, health_context, risk):
@@ -307,7 +369,10 @@ class HerbRAGPipeline:
             f"Compounds: {r.get('compounds')}\n"
             f"Edible parts: {r.get('edible_parts')}\n"
             f"Native distribution: {r.get('native_distribution')}\n"
-            f"Conservation status: {r.get('conservation_status')}\n"
+            # conservation_status is deliberately not sent: it describes how
+            # threatened the species is, not how it is used medicinally, and it
+            # was cluttering the answers.
+
             f"Source: {r.get('source')} (type: {r.get('source_type')})"
             for r in records
         )
@@ -386,7 +451,7 @@ class HerbRAGPipeline:
                 ("Compounds", "compounds"),
                 ("Edible parts", "edible_parts"),
                 ("Native distribution", "native_distribution"),
-                ("Conservation status", "conservation_status"),
+                # ("Conservation status", "conservation_status"),  # hidden by request
             ]
             lines = [f"{names}", ""]
             for label, key in fields:
