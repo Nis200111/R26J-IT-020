@@ -8,7 +8,11 @@ passlib
 bcrypt==4.0.1
 python-jose[cryptography]
 pydantic[email]
-tensorflow
+# Member 3 - leaf disease CNN. The .keras file runs on any Keras 3 backend.
+# TensorFlow ships no wheel for Python 3.14+, so torch is the backend there.
+keras
+tensorflow; python_version < "3.14"
+torch; python_version >= "3.14"
 matplotlib
 
 # Member 2 - RAG herb knowledge assistant
