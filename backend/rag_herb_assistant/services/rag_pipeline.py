@@ -50,6 +50,11 @@ FEAT_COLS_PATH = os.path.join(_BASE, "models", "feature_columns.pkl")
 
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 OLLAMA_MODEL = "llama3.2"
+# Keep the model resident between questions instead of Ollama's 5-minute default.
+OLLAMA_KEEP_ALIVE = "30m"
+# Upper bound on answer length. Normal answers land well under this; the cap
+# only stops a runaway generation from blocking the request for a minute.
+OLLAMA_MAX_TOKENS = 400
 
 FALLBACK_ANSWER = ("Verified information is not available in the current "
                    "knowledge base for this question.")
@@ -100,6 +105,21 @@ class HerbRAGPipeline:
 
         # Built on the first safety question, then reused (see _explain_risk).
         self._shap_explainer = None
+
+        # Conditions the knowledge base actually treats, harvested from the
+        # treatment_for column. Used by resolve_reference to tell "that"
+        # meaning a herb from "that" meaning an ailment.
+        self._disease_terms = set()
+        for rec in self.metadata:
+            for term in str(rec.get("treatment_for", "")).split(";"):
+                term = term.strip().lower()
+                if len(term) >= 4:
+                    self._disease_terms.add(term)
+                    # also index the individual words, so "diabetes" matches
+                    # a record whose entry is "diabetes management"
+                    for w in term.split():
+                        if len(w) >= 5:
+                            self._disease_terms.add(w)
 
         # Herb-name lexicon for spelling correction (Sinhala/English/Latin).
         # Sinhala herb names have many romanised spellings (Kohomba / Kohoba),
@@ -296,6 +316,32 @@ class HerbRAGPipeline:
             "explanation": explanation,
         }
 
+    # Phrases in a query that state the user's own condition or medication,
+    # mapped to the categories the risk classifier was trained on. Only
+    # first-person statements count - "is X safe in pregnancy" is a general
+    # question, "I am pregnant" is a fact about the person asking.
+    _SELF_STATED = [
+        (r"\b(i am|i'm|im)\s+pregnan|\bmy pregnan|\bi am expecting\b", "patient_condition", "pregnancy"),
+        (r"\bi am breastfeeding\b|\bi'm breastfeeding\b|\bim breastfeeding\b|\bi am nursing\b", "patient_condition", "breastfeeding"),
+        (r"\bi have diabet|\bi'm diabetic\b|\bi am diabetic\b|\bim diabetic\b|\bmy diabetes\b", "patient_condition", "diabetes"),
+        (r"\bi have (high blood pressure|hypertension)\b|\bmy blood pressure\b", "patient_condition", "hypertension"),
+        (r"\bi have kidney\b|\bmy kidney", "patient_condition", "kidney disease"),
+        (r"\bi have liver\b|\bmy liver", "patient_condition", "liver disease"),
+        (r"\bi have heart\b|\bmy heart (disease|condition)\b", "patient_condition", "heart disease"),
+        (r"\bi (take|am on|'m on)\s+(insulin|metformin)\b", "medication_context", "antidiabetic"),
+        (r"\bi (take|am on|'m on)\s+(warfarin|blood thinner|anticoagulant)\b", "medication_context", "anticoagulant"),
+        (r"\bi (take|am on|'m on)\s+antibiotic", "medication_context", "antibiotics"),
+    ]
+
+    def _context_from_query(self, query: str) -> dict:
+        """Extract health context the user stated about themselves in the query."""
+        q = (query or "").lower()
+        found = {}
+        for pattern, field, value in self._SELF_STATED:
+            if re.search(pattern, q):
+                found[field] = value
+        return found
+
     def _explain_risk(self, X, predicted_class, ctx) -> list:
         """
         Per-prediction SHAP explanation for one risk classification.
@@ -421,6 +467,12 @@ class HerbRAGPipeline:
             resp = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
+                # Ollama unloads the model after 5 idle minutes by default, and
+                # reloading 2.6 GB costs ~15 s on the next question. Hold it.
+                keep_alive=OLLAMA_KEEP_ALIVE,
+                # Generation runs at ~11 tok/s on CPU, so an answer that runs
+                # away is the difference between a 6 s and a 60 s reply.
+                options={"num_predict": OLLAMA_MAX_TOKENS},
             )
             return resp["message"]["content"].strip()
         except Exception as e:
@@ -473,24 +525,40 @@ class HerbRAGPipeline:
     _REFERRING_WORDS = {"that", "it", "its", "this", "more", "else", "also",
                         "them", "they", "same", "further", "detail", "details"}
 
+    # Words that signal the user wants a LIST of herbs, not more about one herb.
+    _LIST_WORDS = {"herbs", "plants", "options", "alternatives", "list",
+                   "suggestions", "recommend", "recommendations", "which"}
+
     def resolve_reference(self, query: str, last_herb: str):
         """
         Turn a follow-up like "give me more details about that" into
         "... about Ranawara", so retrieval has something to search for.
 
-        Only fires when the query does NOT already name a herb and does
-        contain a referring word, so normal questions are left alone.
+        Fires only when the query is genuinely about the previous herb. It must
+        contain a referring word AND must not be a self-contained new question.
+
+        Three things block it, because "that" does not always point backwards:
+          * the query already names a herb;
+          * the query names a condition, so "that" refers to the condition
+            ("I have diabetes, what herbs are good for that?" - "that" is the
+            diabetes, not the herb discussed a moment ago);
+          * the query asks for a list, which is a new search rather than a
+            follow-up about one herb.
         """
         if not last_herb:
             return query, None
         q = query.lower()
-        names_a_herb = any(
-            re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index
-        )
-        if names_a_herb:
+        words = set(re.findall(r"[a-z]+", q))
+
+        if any(re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index):
             return query, None
-        if not (set(re.findall(r"[a-z]+", q)) & self._REFERRING_WORDS):
+        if not (words & self._REFERRING_WORDS):
             return query, None
+        if words & self._LIST_WORDS:
+            return query, None
+        if any(re.search(rf"\b{re.escape(d)}\b", q) for d in self._disease_terms):
+            return query, None
+
         # Append the bare name (not "about <name>") so the phrasing stays
         # natural and lookup_by_name can match it.
         return f"{query} {last_herb}", last_herb
@@ -557,6 +625,11 @@ class HerbRAGPipeline:
         risk = None
         if needs_ctx and health_context is not None:
             hc = dict(health_context)
+            # A condition stated in the query outranks the stored profile.
+            # "I have diabetes, what herbs help?" must not be scored against a
+            # saved profile that still says patient_condition = "none", or the
+            # safety check silently evaluates the wrong person.
+            hc.update(self._context_from_query(query))
             hc.setdefault("herb_name", records[0].get("herb_name_english", "unknown"))
             risk = self.predict_risk(hc)
 

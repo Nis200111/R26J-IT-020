@@ -5,13 +5,19 @@ import { Loader2 } from "lucide-react";
 import UserBubble from "./UserBubble";
 import ErrorNotice from "./ErrorNotice";
 import HerbAnswerResult from "./results/HerbAnswerResult";
+import LeafDiseaseResult from "./results/LeafDiseaseResult";
+import PlantAuthResult from "./results/PlantAuthResult";
 import { getModel } from "./models";
 
 /** Result body for a thread entry, chosen by which model produced it. */
 function ResultBody({ member, data }) {
   switch (member) {
+    case "member1":
+      return <PlantAuthResult data={data} />;
     case "member2":
       return <HerbAnswerResult data={data} />;
+    case "member3":
+      return <LeafDiseaseResult data={data} />;
     default:
       // Only member2 is wired up so far; the others land here when added.
       return <pre className="overflow-x-auto text-xs text-zinc-400">{JSON.stringify(data, null, 2)}</pre>;
@@ -28,7 +34,9 @@ export default function MessageList({ messages, loading, onRetry }) {
   return (
     <div className="space-y-4">
       {messages.map((m) => {
-        if (m.role === "user") return <UserBubble key={m.id} text={m.text} />;
+        if (m.role === "user") {
+          return <UserBubble key={m.id} text={m.text} imageUrl={m.imageUrl} />;
+        }
         if (m.role === "error") {
           return <ErrorNotice key={m.id} message={m.message} onRetry={onRetry} />;
         }

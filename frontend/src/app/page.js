@@ -36,7 +36,7 @@ export default function Home() {
         <div className="container relative z-10 px-6 max-w-4xl space-y-4">
           <div className="mb-2 flex items-center gap-3 justify-center">
             <div className="h-[1px] w-6 bg-[#c5a880]"></div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#c5a880]">Adhitya Ayurveda Center</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#c5a880]">Bio-Heritage AI</span>
             <div className="h-[1px] w-6 bg-[#c5a880]"></div>
           </div>
 
@@ -79,7 +79,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. SECTION: Welcome to Adhitya Ayurveda */}
+      {/* 2. SECTION: Welcome to Bio-Heritage AI */}
       <section className="bg-white py-20 border-b border-zinc-100">
         <div className="container mx-auto px-6 max-w-5xl">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
@@ -96,10 +96,10 @@ export default function Home() {
               </div>
               <h2 className="font-serif text-3xl md:text-4xl font-bold text-zinc-950 leading-tight">
                 Welcome to <br />
-                <span className="italic font-light text-emerald-700">Adhitya Ayurveda</span>
+                <span className="italic font-light text-emerald-700">Bio-Heritage AI</span>
               </h2>
               <p className="text-zinc-650 leading-relaxed font-light text-sm">
-                Adhitya Ayurveda is a premier center of traditional healing, providing authentic Ayurvedic medical treatments for chronic ailments, rejuvenations, and wellness. Rooted in Sri Lanka&apos;s ancient indigenous medical heritage, we combine natural treatments with research-grade AI tools to classify, transcribe, and validate traditional healing pathways.
+                Bio-Heritage AI is a premier center of traditional healing, providing authentic Ayurvedic medical treatments for chronic ailments, rejuvenations, and wellness. Rooted in Sri Lanka&apos;s ancient indigenous medical heritage, we combine natural treatments with research-grade AI tools to classify, transcribe, and validate traditional healing pathways.
               </p>
               <div className="pt-2">
                 <a href="#research-modules" className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800">
@@ -203,7 +203,7 @@ export default function Home() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Historical Legacy</span>
               <h3 className="font-serif text-3xl font-bold text-zinc-950">A Legacy of Royal Indigenous Medicine</h3>
               <p className="text-xs text-zinc-500 leading-relaxed font-light">
-                For generations, Sri Lankan kings maintained dedicated herbal gardens and royal hospitals (Arogyasala) to care for the community. Adhitya Ayurveda preserves this royal lineage of Hela Vedakama, combining century-old palm leaf manuscript formulas with modern neural networks to verify botanical authenticity.
+                For generations, Sri Lankan kings maintained dedicated herbal gardens and royal hospitals (Arogyasala) to care for the community. Bio-Heritage AI preserves this royal lineage of Hela Vedakama, combining century-old palm leaf manuscript formulas with modern neural networks to verify botanical authenticity.
               </p>
               <div className="pt-2">
                 <a href="#research-modules" className="rounded-full bg-[#c5a880] px-6 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#b0936b] transition-all">

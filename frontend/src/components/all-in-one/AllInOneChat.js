@@ -10,7 +10,7 @@ import MessageList from "./MessageList";
 import ComingSoonPanel from "./ComingSoonPanel";
 import HealthContextForm from "./HealthContextForm";
 import HealthContextChip from "./HealthContextChip";
-import { askMember2, getMember2Health } from "./api";
+import { askMember2, getMember2Health, predictImage } from "./api";
 import {
   MODELS, DEFAULT_MODEL_ID, DEFAULT_HEALTH_FORM, getModel, API_URL,
 } from "./models";
@@ -33,6 +33,10 @@ export default function AllInOneChat() {
 
   const [health, setHealth] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Image attached but not yet sent: { file, previewUrl, name }
+  const [pending, setPending] = useState(null);
+  const [dragging, setDragging] = useState(false);
 
   const model = getModel(modelId);
 
@@ -101,9 +105,57 @@ export default function AllInOneChat() {
     }
   }, [lastHerb, push]);
 
+  /** Send an attached image to an image-classifying module (member1/member3). */
+  const runImageModel = useCallback(async (file) => {
+    setLoading(true);
+    try {
+      const data = await predictImage(model.endpoint, file);
+      if (data.error) {
+        push({ role: "error", member: model.id, message: data.message });
+        setHealth((h) => ({ ...h, [model.id]: { ok: false, message: data.message } }));
+        return;
+      }
+      setHealth((h) => ({ ...h, [model.id]: { ok: true } }));
+      push({ role: "result", member: model.id, data });
+    } catch {
+      push({
+        role: "error",
+        member: model.id,
+        message: `Could not reach the backend at ${API_URL}. Is it running?`,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [model.endpoint, model.id, push]);
+
+  /** Accept a dropped or picked image. Only image models take one. */
+  const acceptFile = useCallback((file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    setPending((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl: URL.createObjectURL(file), name: file.name };
+    });
+  }, []);
+
+  function clearPending() {
+    if (pending?.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+    setPending(null);
+  }
+
   function handleSubmit() {
+    if (loading || !model.enabled) return;
+
+    if (model.input === "image") {
+      if (!pending) return;
+      push({ role: "user", member: model.id, imageUrl: pending.previewUrl });
+      const file = pending.file;
+      setPending(null);   // keep the object URL alive: the thread renders it
+      runImageModel(file);
+      return;
+    }
+
     const q = input.trim();
-    if (!q || loading || !model.enabled) return;
+    if (!q) return;
     push({ role: "user", member: model.id, text: q });
     setInput("");
     runMember2(q, healthContext);
@@ -131,9 +183,13 @@ export default function AllInOneChat() {
     setPendingQuery(null);
     setFollowups([]);
     setSidebarOpen(false);
+    clearPending();
   }
 
   function selectModel(id) {
+    // An attached image is meaningless to a text model, so drop it rather than
+    // leaving a chip the user cannot send.
+    if (getModel(id).input !== "image") clearPending();
     setModelId(id);
     setSidebarOpen(false);
   }
@@ -142,7 +198,33 @@ export default function AllInOneChat() {
   const showComposer = model.enabled;
 
   return (
-    <div className="fixed inset-0 z-[60] flex overflow-hidden bg-zinc-950 text-zinc-100 [color-scheme:dark]">
+    <div
+      className="fixed inset-0 z-[60] flex overflow-hidden bg-zinc-950 text-zinc-100 [color-scheme:dark]"
+      onDragOver={(e) => {
+        if (model.input !== "image" || !model.enabled) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        // Only clear when the pointer actually leaves the shell, not when it
+        // crosses a child element boundary.
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setDragging(false);
+      }}
+      onDrop={(e) => {
+        if (model.input !== "image" || !model.enabled) return;
+        e.preventDefault();
+        setDragging(false);
+        acceptFile(e.dataTransfer.files?.[0]);
+      }}
+    >
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed border-[#c5a880] bg-zinc-950/80">
+          <p className="rounded-2xl bg-zinc-900 px-6 py-4 text-sm font-bold text-[#c5a880]">
+            Drop the image to analyse it
+          </p>
+        </div>
+      )}
       <Sidebar
         models={MODELS}
         selectedId={modelId}
@@ -191,7 +273,8 @@ export default function AllInOneChat() {
                   loading={loading}
                 />
               )}
-              {healthContext && !pendingQuery && (
+              {/* The health profile only means anything to the herb assistant. */}
+              {healthContext && !pendingQuery && model.id === "member2" && (
                 <HealthContextChip
                   healthContext={healthContext}
                   onReset={() => setHealthContext(null)}
@@ -206,6 +289,9 @@ export default function AllInOneChat() {
                   onSubmit={handleSubmit}
                   onSelectModel={selectModel}
                   loading={loading}
+                  pending={pending}
+                  onFile={acceptFile}
+                  onClearPending={clearPending}
                 />
               )}
               <p className="text-center text-[11px] leading-relaxed text-zinc-600">

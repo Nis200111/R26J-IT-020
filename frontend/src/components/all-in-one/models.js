@@ -35,7 +35,7 @@ export const MODELS = [
     href: "/member1",
     blurb: "Identify a herb species from a photograph and flag likely adulterants.",
     placeholder: "Attach a plant photo to authenticate",
-    enabled: false,
+    enabled: true,
   },
   {
     id: "member3",
@@ -47,7 +47,7 @@ export const MODELS = [
     href: "/member3",
     blurb: "Check whether a leaf is healthy and suitable for Ayurvedic preparation.",
     placeholder: "Attach a leaf photo to diagnose",
-    enabled: false,
+    enabled: true,
   },
   {
     id: "member4",
