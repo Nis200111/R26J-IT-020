@@ -1,4 +1,5 @@
 import io
+import os
 
 import numpy as np
 from fastapi import APIRouter, UploadFile, File
@@ -6,7 +7,12 @@ from PIL import Image
 
 router = APIRouter()
 
-MODEL_PATH = "app/models/member1/plant_model_finetuned_best.keras"
+# Resolved relative to THIS file, not the current working directory, so the
+# model still loads when uvicorn is started from somewhere other than backend/.
+MODEL_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "models", "member1",
+    "model_v2_efficientnetv2b0.keras",
+)
 IMG_SIZE = (224, 224)
 
 # Order matters — this is the class order TensorFlow's image_dataset_from_directory
