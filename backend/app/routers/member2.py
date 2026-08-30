@@ -65,6 +65,18 @@ def get_pipeline():
     return _pipeline
 
 
+def warm_up():
+    """
+    Build the pipeline in the background at startup.
+
+    Loading sentence-transformers, the FAISS index and the .pkl models takes
+    ~17 s, and lazily it is the first user who pays it. This runs on a daemon
+    thread so uvicorn still reports startup complete immediately and the other
+    members' endpoints stay responsive while it loads.
+    """
+    threading.Thread(target=get_pipeline, name="member2-warmup", daemon=True).start()
+
+
 class HealthContext(BaseModel):
     age_group: str = "adult"
     patient_condition: str = "none"
