@@ -48,6 +48,33 @@ export default function HerbAnswerResult({ data }) {
         </div>
       )}
 
+      {/* SHAP: which parts of the health context drove this risk level.
+          Computed per prediction, so it changes with the user's context. */}
+      {data.riskExplanation?.length > 0 && (
+        <div className="mb-4 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+            Why this risk level
+          </p>
+          <ul className="space-y-1">
+            {data.riskExplanation.map((e, i) => (
+              <li key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="text-zinc-400">
+                  {e.feature.replace(/_/g, " ")}
+                  {e.value ? <span className="text-zinc-200"> — {e.value}</span> : null}
+                </span>
+                {typeof e.impact === "number" && (
+                  <span className={`shrink-0 font-mono text-[11px] ${
+                    e.impact >= 0 ? "text-amber-300" : "text-emerald-300"
+                  }`}>
+                    {e.impact >= 0 ? "+" : ""}{e.impact.toFixed(3)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Shown when the user's condition is outside the classifier's training data */}
       {data.riskWarning && (
         <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-200">
@@ -65,6 +92,12 @@ export default function HerbAnswerResult({ data }) {
         </p>
       )}
 
+      {/*
+        Retrieved sources — hidden by request. The data is still returned by the
+        API (data.sources), so uncommenting this block restores it. Worth turning
+        back on for a demo: it is the visible evidence that answers come from the
+        knowledge base rather than the language model's own memory.
+
       {data.sources?.length > 0 && (
         <div className="mt-5 border-t border-zinc-800 pt-4">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
@@ -81,6 +114,7 @@ export default function HerbAnswerResult({ data }) {
           </ul>
         </div>
       )}
+      */}
     </div>
   );
 }
