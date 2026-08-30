@@ -28,6 +28,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    # Loads the herb assistant's models on a background thread, so the first
+    # question does not pay the ~17 s startup cost.
+    member2.warm_up()
 
 
 
