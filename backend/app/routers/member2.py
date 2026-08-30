@@ -41,15 +41,25 @@ _lock = threading.Lock()
 
 
 def get_pipeline():
-    """Build the pipeline once, on first use. Thread-safe."""
+    """
+    Build the pipeline once, on first use. Thread-safe.
+
+    A failed load is retried on the next request rather than cached forever:
+    the usual cause is a missing artifact (the FAISS index and .pkl models are
+    git-ignored, so they go missing after a fresh clone or a branch switch).
+    Once the files are back, the next request recovers on its own instead of
+    needing the whole backend restarted. Failures are fast, so retrying costs
+    little.
+    """
     global _pipeline, _pipeline_error
-    if _pipeline is not None or _pipeline_error is not None:
+    if _pipeline is not None:
         return _pipeline
     with _lock:
-        if _pipeline is None and _pipeline_error is None:
+        if _pipeline is None:
             try:
                 from rag_pipeline import HerbRAGPipeline
                 _pipeline = HerbRAGPipeline()
+                _pipeline_error = None
             except Exception as e:
                 _pipeline_error = str(e)
     return _pipeline
@@ -111,6 +121,8 @@ async def ask(body: AskRequest):
             "riskLevel": risk["risk_level"] if risk else None,
             "riskFactors": risk["top_factors"] if risk else [],
             "riskWarning": risk.get("warning") if risk else None,
+            # Per-prediction SHAP contributions: [{feature, value, impact}]
+            "riskExplanation": risk.get("explanation", []) if risk else [],
             "corrections": result.get("corrections") or [],
             "followedUpOn": result.get("followed_up_on"),
             "sources": [
