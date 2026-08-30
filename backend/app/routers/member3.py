@@ -1,6 +1,19 @@
 import io
 import os
 
+import importlib.util
+
+# efficientnetb4_v3.keras is a plain Keras 3 archive, so it runs on any Keras
+# backend. TensorFlow is the default and is what this model was trained with,
+# but it has no wheel for Python 3.14+ -- there we fall back to torch. Anyone
+# can override with KERAS_BACKEND in the environment. Must run before keras is
+# imported.
+if not os.environ.get("KERAS_BACKEND"):
+    for _backend, _module in (("tensorflow", "tensorflow"), ("torch", "torch"), ("jax", "jax")):
+        if importlib.util.find_spec(_module) is not None:
+            os.environ["KERAS_BACKEND"] = _backend
+            break
+
 import numpy as np
 from fastapi import APIRouter, UploadFile, File
 from PIL import Image
@@ -14,14 +27,17 @@ CLASS_LABELS = ["Anthracnose", "Bacterial_Leaf_Spot", "Healthy", "Rot", "Rust"]
 
 model = None
 model_load_error = None
-tf = None
+keras = None
 
 try:
-    import tensorflow as _tf
-    tf = _tf
+    try:
+        import keras as _keras  # Keras 3, standalone
+    except ImportError:  # older setups only have the keras bundled with tensorflow
+        from tensorflow import keras as _keras
+    keras = _keras
     if os.path.exists(MODEL_PATH):
-        model = tf.keras.models.load_model(MODEL_PATH)
-        print(f"[Member3] Model loaded successfully from {MODEL_PATH}")
+        model = keras.models.load_model(MODEL_PATH)
+        print(f"[Member3] Model loaded successfully from {MODEL_PATH} (backend: {keras.backend.backend()})")
     else:
         model_load_error = f"Model file not found at {MODEL_PATH}"
         print(f"[Member3] {model_load_error}")
@@ -34,8 +50,8 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
     """Resize and preprocess the image for EfficientNetB4 inference."""
     image = image.resize(IMG_SIZE)
     img_array = np.array(image, dtype=np.float32)
-    # Use EfficientNet's built-in preprocessing (scales to [-1, 1])
-    img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+    # EfficientNet's preprocessing (rescaling/normalisation lives inside the model)
+    img_array = keras.applications.efficientnet.preprocess_input(img_array)
     img_array = np.expand_dims(img_array, axis=0)  # add batch dimension
     return img_array
 
