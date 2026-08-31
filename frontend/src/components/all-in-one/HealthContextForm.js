@@ -14,8 +14,9 @@ import { AGE_GROUPS, CONDITIONS, MEDICATIONS, DOSAGE_FORMS, OTHER } from "./mode
  * instead lets the backend see a category it does not know, so it returns
  * "Caution" and says why, rather than guessing.
  */
-export default function HealthContextForm({ followups, form, onChange, onSubmit, loading }) {
+export default function HealthContextForm({ followups, knownFields = [], form, onChange, onSubmit, loading }) {
   const usesOther = form.patient_condition === OTHER || form.medication_context === OTHER;
+  const known = (field) => knownFields.includes(field);
 
   return (
     <form
@@ -35,10 +36,12 @@ export default function HealthContextForm({ followups, form, onChange, onSubmit,
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Select label="Age group" value={form.age_group} options={AGE_GROUPS}
+          fromQuery={known("age_group")}
           onChange={(v) => onChange({ ...form, age_group: v })} />
 
         <div>
           <Select label="Condition" value={form.patient_condition} options={CONDITIONS}
+            fromQuery={known("patient_condition")}
             onChange={(v) => onChange({ ...form, patient_condition: v })} />
           {form.patient_condition === OTHER && (
             <TextInput
@@ -51,6 +54,7 @@ export default function HealthContextForm({ followups, form, onChange, onSubmit,
 
         <div>
           <Select label="Medication" value={form.medication_context} options={MEDICATIONS}
+            fromQuery={known("medication_context")}
             onChange={(v) => onChange({ ...form, medication_context: v })} />
           {form.medication_context === OTHER && (
             <TextInput
@@ -86,16 +90,28 @@ export default function HealthContextForm({ followups, form, onChange, onSubmit,
   );
 }
 
-function Select({ label, value, options, onChange }) {
+/**
+ * `fromQuery` marks a field the assistant filled in from the question itself,
+ * which is also why it did not ask about it. It stays editable: the inference
+ * is a keyword match and the user is the authority on their own health.
+ */
+function Select({ label, value, options, fromQuery, onChange }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+      <span className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
         {label}
+        {fromQuery && (
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-300">
+            from your question
+          </span>
+        )}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-zinc-500"
+        className={`w-full rounded-xl border bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-zinc-500 ${
+          fromQuery ? "border-amber-500/40" : "border-zinc-700"
+        }`}
       >
         {options.map((o) => (
           <option key={o} value={o}>{o === OTHER ? "other (not listed)" : o}</option>

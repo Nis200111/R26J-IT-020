@@ -53,9 +53,9 @@ export default function Home() {
             <a href="#research-modules" className="rounded-full bg-[#c5a880] px-8 py-3.5 text-[11px] font-bold uppercase tracking-[0.15em] text-white transition-all hover:bg-[#b0936b] shadow-lg">
               Explore Research
             </a>
-            <a href="#locations" className="rounded-full border border-white/30 bg-black/10 backdrop-blur-sm px-8 py-3.5 text-[11px] font-bold uppercase tracking-[0.15em] text-white transition-all hover:bg-white/10 hover:border-white/50">
+            {/* <a href="#locations" className="rounded-full border border-white/30 bg-black/10 backdrop-blur-sm px-8 py-3.5 text-[11px] font-bold uppercase tracking-[0.15em] text-white transition-all hover:bg-white/10 hover:border-white/50">
               Our Locations
-            </a>
+            </a> */}
           </div>
         </div>
 
