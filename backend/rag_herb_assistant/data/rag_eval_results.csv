@@ -1,0 +1,41 @@
+question,intent,faithfulness,answer_relevancy,context_precision,context_recall,hallucination_rate
+What is Sududena used for?,herb-property,1.0,0.7760137915611267,0.0,1.0,0.0
+What is the dosage of Bosagoda?,dosage,1.0,0.3763776421546936,0.0,1.0,0.0
+What are the contraindications of Didutana?,contraindication,1.0,0.28729256987571716,0.0,1.0,0.0
+Which herbs are used for heart health?,herb-disease,1.0,0.6252774596214294,0.4800000000000001,0.0,0.0
+What is Kesauda used for?,herb-property,0.8,0.6892354488372803,0.0,1.0,0.19999999999999996
+What is the dosage of Kihigaha?,dosage,1.0,0.45038455724716187,1.0,1.0,0.0
+What are the contraindications of Habamula?,contraindication,1.0,0.31393352150917053,0.4800000000000001,1.0,0.0
+Which herbs are used for stress?,herb-disease,0.75,0.510535478591919,0.0,0.0,0.25
+What is Nitakola used for?,herb-property,1.0,0.8304793238639832,0.4800000000000001,1.0,0.0
+What is the dosage of Mamamala?,dosage,1.0,0.6248919367790222,0.64,1.0,0.0
+What are the contraindications of Bowigala?,contraindication,1.0,0.24099045991897583,0.0,1.0,0.0
+Which herbs are used for anxiety?,herb-disease,0.5,0.6396275758743286,0.0,1.0,0.5
+What is Domba used for?,herb-property,1.0,0.7088251709938049,0.12000000000000002,1.0,0.0
+What is the dosage of Mudagoda?,dosage,0.5,0.3888220191001892,1.0,1.0,0.5
+What are the contraindications of Kurundu?,contraindication,1.0,0.1847071349620819,0.0,1.0,0.0
+Which herbs are used for ringworm?,herb-disease,1.0,0.7233903408050537,1.0,0.5,0.0
+What is Golukanda used for?,herb-property,1.0,0.8626166582107544,0.0,1.0,0.0
+What is the dosage of Kebariya?,dosage,1.0,0.7869917154312134,0.0,1.0,0.0
+What are the contraindications of Dimaaru?,contraindication,1.0,0.33420220017433167,0.0,1.0,0.0
+Which herbs are used for chest congestion?,herb-disease,1.0,0.7391342520713806,1.0,1.0,0.0
+What is Lamariya used for?,herb-property,1.0,0.7688872814178467,0.0,1.0,0.0
+What is the dosage of Musigala?,dosage,1.0,0.24212169647216797,0.0,1.0,0.0
+What are the contraindications of Sadaliya?,contraindication,1.0,0.2729010581970215,0.0,1.0,0.0
+Which herbs are used for joint pain?,herb-disease,1.0,0.6275651454925537,0.7600000000000001,0.0,0.0
+What is Walabatu used for?,herb-property,1.0,0.795819103717804,0.0,1.0,0.0
+What is the dosage of Ruhikola?,dosage,1.0,0.6910511255264282,0.7600000000000001,1.0,0.0
+What are the contraindications of Titagoda?,contraindication,1.0,0.23244938254356384,0.0,1.0,0.0
+Which herbs are used for hair care?,herb-disease,1.0,0.6215224266052246,1.0,1.0,0.0
+What is Saratana used for?,herb-property,1.0,0.849186897277832,0.4800000000000001,1.0,0.0
+What is the dosage of Attana?,dosage,1.0,0.648362398147583,1.0,1.0,0.0
+What are the contraindications of Patabatu?,contraindication,1.0,0.5265167355537415,0.0,1.0,0.0
+Which herbs are used for oedema?,herb-disease,1.0,0.6205800175666809,0.36000000000000004,0.0,0.0
+What is Pinakola used for?,herb-property,1.0,0.768787145614624,0.0,1.0,0.0
+What is the dosage of Rasamula?,dosage,1.0,0.5514639616012573,0.6000000000000001,1.0,0.0
+What are the contraindications of Gakigala?,contraindication,1.0,0.19736236333847046,0.0,1.0,0.0
+Which herbs are used for haemorrhoids?,herb-disease,1.0,0.7060298919677734,1.0,1.0,0.0
+What is Mawigoda used for?,herb-property,1.0,0.8100920915603638,0.0,1.0,0.0
+What is the dosage of Suwamula?,dosage,1.0,0.4178370237350464,1.0,1.0,0.0
+What are the contraindications of Bohaliya?,contraindication,1.0,0.22246193885803223,0.0,1.0,0.0
+Which herbs are used for anxiety?,herb-disease,0.8571428571428571,0.5133191347122192,0.64,1.0,0.1428571428571429

@@ -31,6 +31,7 @@ from sentence_transformers import SentenceTransformer
 from health_context_checker import (
     requires_health_context,
     get_followup_questions,
+    infer_context_from_query,
     build_health_context,
 )
 
@@ -50,6 +51,11 @@ FEAT_COLS_PATH = os.path.join(_BASE, "models", "feature_columns.pkl")
 
 EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
 OLLAMA_MODEL = "llama3.2"
+# Keep the model resident between questions instead of Ollama's 5-minute default.
+OLLAMA_KEEP_ALIVE = "30m"
+# Upper bound on answer length. Normal answers land well under this; the cap
+# only stops a runaway generation from blocking the request for a minute.
+OLLAMA_MAX_TOKENS = 400
 
 FALLBACK_ANSWER = ("Verified information is not available in the current "
                    "knowledge base for this question.")
@@ -100,6 +106,21 @@ class HerbRAGPipeline:
 
         # Built on the first safety question, then reused (see _explain_risk).
         self._shap_explainer = None
+
+        # Conditions the knowledge base actually treats, harvested from the
+        # treatment_for column. Used by resolve_reference to tell "that"
+        # meaning a herb from "that" meaning an ailment.
+        self._disease_terms = set()
+        for rec in self.metadata:
+            for term in str(rec.get("treatment_for", "")).split(";"):
+                term = term.strip().lower()
+                if len(term) >= 4:
+                    self._disease_terms.add(term)
+                    # also index the individual words, so "diabetes" matches
+                    # a record whose entry is "diabetes management"
+                    for w in term.split():
+                        if len(w) >= 5:
+                            self._disease_terms.add(w)
 
         # Herb-name lexicon for spelling correction (Sinhala/English/Latin).
         # Sinhala herb names have many romanised spellings (Kohomba / Kohoba),
@@ -174,6 +195,10 @@ class HerbRAGPipeline:
 
     def followup_questions(self, query: str, intent: str) -> list:
         return get_followup_questions(query, intent)
+
+    def known_context(self, query: str) -> dict:
+        """The health-context fields the query already stated, if any."""
+        return infer_context_from_query(query)
 
     # ----- 3. Retrieval ----------------------------------------------------
     def retrieve(self, query: str, k: int = 8) -> list:
@@ -271,16 +296,33 @@ class HerbRAGPipeline:
             row.append(le.transform([val])[0])
 
         if unknown_inputs:
-            details = ", ".join(f"{k}='{v}'" for k, v in unknown_inputs.items())
+            said = ", ".join(f"{v} ({k.replace('_', ' ')})"
+                             for k, v in unknown_inputs.items())
+            known = "; ".join(
+                f"{col.replace('_', ' ')}: "
+                + ", ".join(str(c) for c in self.feature_encoders[col].classes_)
+                for col in unknown_inputs
+            )
             return {
                 "risk_level": "Caution",
                 "top_factors": list(unknown_inputs.keys()),
-                "explanation": [],
+                # Echo what the user told us, so the answer still visibly takes
+                # their condition into account even though it was not scored.
+                "explanation": [
+                    {"feature": k, "value": v, "impact": None}
+                    for k, v in unknown_inputs.items()
+                ],
+                # Machine-readable twin of the warning: the answer generator uses
+                # it to name the condition in the answer, and the UI could use it
+                # to style the notice.
+                "unknown_context": unknown_inputs,
                 "warning": (
-                    f"The value(s) {details} are outside the system's training "
-                    f"data, so an accurate risk prediction is not possible. "
-                    f"Defaulting to 'Caution' — please consult a qualified "
-                    f"medical or Ayurvedic practitioner."
+                    f"You told us: {said}. The risk model was not trained on "
+                    f"that, so no risk level is being predicted for you — the "
+                    f"answer is marked Caution and reflects only what the "
+                    f"knowledge base records about the herb. Please check with "
+                    f"a qualified Ayurvedic or medical practitioner. "
+                    f"It can only score {known}."
                 ),
             }
 
@@ -295,6 +337,84 @@ class HerbRAGPipeline:
             "top_factors": top_factors,
             "explanation": explanation,
         }
+
+    # Phrases in a query that state the user's own condition or medication,
+    # mapped to the categories the risk classifier was trained on. Only
+    # first-person statements count - "is X safe in pregnancy" is a general
+    # question, "I am pregnant" is a fact about the person asking.
+    _SELF_STATED = [
+        (r"\b(i am|i'm|im)\s+pregnan|\bmy pregnan|\bi am expecting\b", "patient_condition", "pregnancy"),
+        (r"\bi am breastfeeding\b|\bi'm breastfeeding\b|\bim breastfeeding\b|\bi am nursing\b", "patient_condition", "breastfeeding"),
+        (r"\bi have diabet|\bi'm diabetic\b|\bi am diabetic\b|\bim diabetic\b|\bmy diabetes\b", "patient_condition", "diabetes"),
+        (r"\bi have (high blood pressure|hypertension)\b|\bmy blood pressure\b", "patient_condition", "hypertension"),
+        (r"\bi have kidney\b|\bmy kidney", "patient_condition", "kidney disease"),
+        (r"\bi have liver\b|\bmy liver", "patient_condition", "liver disease"),
+        (r"\bi have heart\b|\bmy heart (disease|condition)\b", "patient_condition", "heart disease"),
+        (r"\bi (take|am on|'m on)\s+(insulin|metformin)\b", "medication_context", "antidiabetic"),
+        (r"\bi (take|am on|'m on)\s+(warfarin|blood thinner|anticoagulant)\b", "medication_context", "anticoagulant"),
+        (r"\bi (take|am on|'m on)\s+antibiotic", "medication_context", "antibiotics"),
+    ]
+
+    def _context_from_query(self, query: str) -> dict:
+        """Extract health context the user stated about themselves in the query."""
+        q = (query or "").lower()
+        found = {}
+        for pattern, field, value in self._SELF_STATED:
+            if re.search(pattern, q):
+                found[field] = value
+        return found
+
+    # "I have <something>" where <something> is not one of the seven conditions
+    # the classifier knows. Kept deliberately narrow, because a false positive
+    # here downgrades a perfectly answerable question to "Caution".
+    _FREE_CONDITION = re.compile(
+        r"\bi (?:have|suffer from|am suffering from|was diagnosed with)\s+"
+        r"((?:[a-z]+ ){0,2}[a-z]+)"
+    )
+    # Words that show the captured phrase is not a diagnosis, plus the
+    # conditions _SELF_STATED already maps to a trained category.
+    _NOT_A_CONDITION = {
+        "question", "questions", "doubt", "herb", "herbs", "plant", "plants",
+        "some", "this", "that", "these", "those", "it", "a", "an", "no", "none",
+        "used", "taken", "tried", "been", "read", "heard", "one", "two", "them",
+        "medicine", "medication", "medications", "tablets", "the", "my", "your",
+        "diabetes", "diabetic", "pregnancy", "pregnant", "kidney", "liver",
+        "heart", "hypertension", "cardiac", "renal",
+    }
+    # The diagnosis ends here: "thyroid disease can i take X" is "thyroid
+    # disease", not "thyroid disease can".
+    _CLAUSE_BREAK = {
+        "can", "could", "should", "would", "may", "is", "are", "was", "were",
+        "do", "does", "did", "will", "and", "but", "so", "if", "when", "while",
+        "what", "which", "who", "how", "why", "please", "i", "we", "you",
+        "for", "with", "to", "of", "in", "on", "at", "from", "about",
+    }
+
+    def _free_condition_from_query(self, query: str):
+        """
+        Pull a condition the classifier was never trained on out of the query,
+        e.g. "I have asthma" -> "asthma".
+
+        Returns None unless the phrase looks like an actual diagnosis: the known
+        conditions are already handled by _SELF_STATED, and anything containing a
+        filler word is rejected rather than guessed at.
+        """
+        m = self._FREE_CONDITION.search((query or "").lower())
+        if not m:
+            return None
+
+        words = []
+        for w in re.sub(r"\s+", " ", m.group(1)).strip(" .,?").split():
+            if w in self._CLAUSE_BREAK:
+                break
+            words.append(w)
+
+        phrase = " ".join(words)
+        if len(phrase) < 4:
+            return None
+        if any(w in self._NOT_A_CONDITION for w in words):
+            return None
+        return phrase
 
     def _explain_risk(self, X, predicted_class, ctx) -> list:
         """
@@ -380,6 +500,33 @@ class HerbRAGPipeline:
         if risk:
             safety = (f"\nSafety risk level for this user context: {risk['risk_level']} "
                       f"(main factors: {', '.join(risk['top_factors'])}).")
+
+        # The user's own context, in words. Without this the answer never
+        # mentions the condition they typed, which matters most exactly when the
+        # risk classifier could not score it: the retrieved records are then the
+        # only safety signal left, so the model has to be told what to check for.
+        profile = ""
+        unknown_note = ""
+        if health_context:
+            hc = build_health_context(health_context)
+            stated = [f"{k.replace('_', ' ')}: {v}"
+                      for k, v in (("patient_condition", hc["patient_condition"]),
+                                   ("medication_context", hc["medication_context"]),
+                                   ("age_group", hc["age_group"]),
+                                   ("dosage_form", hc["dosage_form"]))
+                      if v and v != "none"]
+            if stated:
+                profile = "\n=== THIS USER ===\n" + "; ".join(stated)
+            unknown = (risk or {}).get("unknown_context") or {}
+            condition = unknown.get("patient_condition") or unknown.get("medication_context")
+            if condition:
+                unknown_note = (
+                    f"\nThe user's '{condition}' is not a category the risk "
+                    f"classifier knows, so the records are the only safety "
+                    f"evidence available. State plainly whether the records "
+                    f"mention '{condition}' and, if they do not, say so instead "
+                    f"of reasoning about it."
+                )
         return (
             "You are a Sri Lankan medicinal herb knowledge assistant.\n"
             "Answer the user's question ONLY using the herb records provided below.\n"
@@ -401,6 +548,10 @@ class HerbRAGPipeline:
             "recorded and refer the user to a practitioner.\n"
             "4. If the records are about completely different herbs than the "
             f"one asked about, reply exactly: \"{FALLBACK_ANSWER}\"\n"
+            "5. If a health profile for this user is given below, check the "
+            "recorded contraindications against it and say whether the records "
+            "mention that condition or medication. Do not invent an interaction "
+            "that the records do not state.\n"
             "Always add a short safety note telling the user to consult a qualified "
             "Ayurvedic or medical practitioner for personal use.\n"
             "ANSWER LENGTH: if the user asks about a herb in general, describe "
@@ -410,7 +561,8 @@ class HerbRAGPipeline:
             "safety, answer just that point.\n"
             "Write only the answer itself. Do not repeat these instructions or "
             "any list of headings from them.\n\n"
-            f"=== HERB RECORDS ===\n{context_text}\n{safety}\n\n"
+            f"=== HERB RECORDS ===\n{context_text}\n{safety}{unknown_note}"
+            f"{profile}\n\n"
             f"=== USER QUESTION ===\n{query}\n\n=== ANSWER ==="
         )
 
@@ -421,6 +573,12 @@ class HerbRAGPipeline:
             resp = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
+                # Ollama unloads the model after 5 idle minutes by default, and
+                # reloading 2.6 GB costs ~15 s on the next question. Hold it.
+                keep_alive=OLLAMA_KEEP_ALIVE,
+                # Generation runs at ~11 tok/s on CPU, so an answer that runs
+                # away is the difference between a 6 s and a 60 s reply.
+                options={"num_predict": OLLAMA_MAX_TOKENS},
             )
             return resp["message"]["content"].strip()
         except Exception as e:
@@ -473,24 +631,40 @@ class HerbRAGPipeline:
     _REFERRING_WORDS = {"that", "it", "its", "this", "more", "else", "also",
                         "them", "they", "same", "further", "detail", "details"}
 
+    # Words that signal the user wants a LIST of herbs, not more about one herb.
+    _LIST_WORDS = {"herbs", "plants", "options", "alternatives", "list",
+                   "suggestions", "recommend", "recommendations", "which"}
+
     def resolve_reference(self, query: str, last_herb: str):
         """
         Turn a follow-up like "give me more details about that" into
         "... about Ranawara", so retrieval has something to search for.
 
-        Only fires when the query does NOT already name a herb and does
-        contain a referring word, so normal questions are left alone.
+        Fires only when the query is genuinely about the previous herb. It must
+        contain a referring word AND must not be a self-contained new question.
+
+        Three things block it, because "that" does not always point backwards:
+          * the query already names a herb;
+          * the query names a condition, so "that" refers to the condition
+            ("I have diabetes, what herbs are good for that?" - "that" is the
+            diabetes, not the herb discussed a moment ago);
+          * the query asks for a list, which is a new search rather than a
+            follow-up about one herb.
         """
         if not last_herb:
             return query, None
         q = query.lower()
-        names_a_herb = any(
-            re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index
-        )
-        if names_a_herb:
+        words = set(re.findall(r"[a-z]+", q))
+
+        if any(re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index):
             return query, None
-        if not (set(re.findall(r"[a-z]+", q)) & self._REFERRING_WORDS):
+        if not (words & self._REFERRING_WORDS):
             return query, None
+        if words & self._LIST_WORDS:
+            return query, None
+        if any(re.search(rf"\b{re.escape(d)}\b", q) for d in self._disease_terms):
+            return query, None
+
         # Append the bare name (not "about <name>") so the phrasing stays
         # natural and lookup_by_name can match it.
         return f"{query} {last_herb}", last_herb
@@ -541,6 +715,10 @@ class HerbRAGPipeline:
                 "intent": intent,
                 "corrections": corrections,
                 "followup_questions": self.followup_questions(query, intent),
+                # The questions we skipped were skipped because the query
+                # already answered them. Hand those answers back so the caller
+                # can carry them into the context instead of losing them.
+                "known_context": self.known_context(query),
             }
 
         # Hybrid retrieval: semantic (FAISS) + lexical (exact herb-name lookup),
@@ -555,12 +733,33 @@ class HerbRAGPipeline:
         records = self.rerank(query, candidates, top_n=4)
 
         risk = None
+        effective_ctx = health_context
         if needs_ctx and health_context is not None:
             hc = dict(health_context)
+            # A condition stated in the query outranks the stored profile.
+            # "I have diabetes, what herbs help?" must not be scored against a
+            # saved profile that still says patient_condition = "none", or the
+            # safety check silently evaluates the wrong person.
+            hc.update(self._context_from_query(query))
+
+            # A condition the classifier has no category for ("I have asthma")
+            # would otherwise be dropped, and the answer scored as if the user
+            # had said "none". Carry it through so predict_risk can see that it
+            # is unknown and return Caution instead of a confident "Safe".
+            # "other" means the user chose the escape hatch but typed nothing,
+            # so the query is still the better source.
+            stated = str(hc.get("patient_condition", "none")).strip().lower()
+            if stated in ("", "none", "other"):
+                free = self._free_condition_from_query(query)
+                if free:
+                    hc["patient_condition"] = free
+
             hc.setdefault("herb_name", records[0].get("herb_name_english", "unknown"))
             risk = self.predict_risk(hc)
+            # The answer must describe the same person the risk was scored for.
+            effective_ctx = hc
 
-        answer = self.generate_answer(query, records, health_context, risk)
+        answer = self.generate_answer(query, records, effective_ctx, risk)
         return {
             "type": "answer",
             "intent": intent,

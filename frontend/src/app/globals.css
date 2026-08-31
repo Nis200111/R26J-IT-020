@@ -8,7 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* --font-poppins is declared by next/font in app/layout.js. It already
+     carries a size-adjusted fallback face, so no extra stack is needed here. */
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,7 +24,10 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* This rule is why the app rendered in Arial even though a font was loaded in
+     the layout: it beats Tailwind's font-sans on <body>. Poppins goes here so
+     everything that does not opt into font-serif or font-mono inherits it. */
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer utilities {

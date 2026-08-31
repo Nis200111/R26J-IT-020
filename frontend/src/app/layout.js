@@ -1,14 +1,22 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Script from "next/script";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Poppins is the UI typeface for the whole app. It is not a variable font on
+// Google Fonts, so unlike Geist it needs its weights listed: only the ones
+// below are downloaded, and asking for a weight that is not here silently
+// renders as a synthesised (smeared) face. 300-700 covers every font-* utility
+// the pages use — light body copy up to font-bold headings.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
+// Kept for the font-mono utility (SHAP impact numbers, confidence scores).
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -24,7 +32,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-950">
         <Script

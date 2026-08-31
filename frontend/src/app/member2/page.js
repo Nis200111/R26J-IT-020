@@ -7,17 +7,35 @@ import { Send, Loader2, ShieldAlert, ShieldCheck, Info, BookOpen } from "lucide-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // These options match exactly what the contraindication risk classifier was
-// trained on. Using dropdowns instead of free text stops the model being asked
-// to predict on a category it has never seen.
+// trained on, plus OTHER for everything it was not. Picking OTHER opens a text
+// box; what the user types is sent as-is, and the backend answers with Caution
+// and an explanation rather than scoring a category it has never seen. Without
+// it, a user with (say) asthma had to leave "none" selected and was told the
+// herb was Safe for a condition they never got to mention.
+const OTHER = "other";
 const AGE_GROUPS = ["child", "adult", "elderly"];
 const CONDITIONS = [
   "none", "pregnancy", "breastfeeding", "diabetes",
-  "hypertension", "kidney disease", "liver disease", "heart disease",
+  "hypertension", "kidney disease", "liver disease", "heart disease", OTHER,
 ];
 const MEDICATIONS = [
   "none", "antidiabetic", "antihypertensive", "anticoagulant", "antibiotics",
+  OTHER,
 ];
 const DOSAGE_FORMS = ["herbal tea", "powder", "capsule", "decoction"];
+
+/** Questionnaire state -> the 4 fields the API expects. */
+function toHealthContext(form) {
+  const pick = (value, typed) =>
+    value === OTHER ? (typed || "").trim().toLowerCase() || OTHER : value;
+
+  return {
+    age_group: form.age_group,
+    patient_condition: pick(form.patient_condition, form.patient_condition_other),
+    medication_context: pick(form.medication_context, form.medication_context_other),
+    dosage_form: form.dosage_form,
+  };
+}
 
 const RISK_STYLES = {
   Safe: { icon: ShieldCheck, cls: "bg-emerald-50 text-emerald-800 border-emerald-200" },
@@ -40,6 +58,9 @@ export default function Member2Page() {
     patient_condition: "none",
     medication_context: "none",
     dosage_form: "powder",
+    // Free text, used only while the matching dropdown is set to OTHER.
+    patient_condition_other: "",
+    medication_context_other: "",
   });
 
   async function callApi(q, ctx) {
@@ -91,11 +112,12 @@ export default function Member2Page() {
 
   function submitContext(e) {
     e.preventDefault();
-    setHealthContext(form);
+    const ctx = toHealthContext(form);
+    setHealthContext(ctx);
     const q = pendingQuery;
     setPendingQuery(null);
     setFollowups([]);
-    send(q, form);
+    send(q, ctx);
   }
 
   return (
@@ -231,13 +253,41 @@ export default function Member2Page() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Select label="Age group" value={form.age_group} options={AGE_GROUPS}
                   onChange={(v) => setForm({ ...form, age_group: v })} />
-                <Select label="Condition" value={form.patient_condition} options={CONDITIONS}
-                  onChange={(v) => setForm({ ...form, patient_condition: v })} />
-                <Select label="Medication" value={form.medication_context} options={MEDICATIONS}
-                  onChange={(v) => setForm({ ...form, medication_context: v })} />
+
+                <div>
+                  <Select label="Condition" value={form.patient_condition} options={CONDITIONS}
+                    onChange={(v) => setForm({ ...form, patient_condition: v })} />
+                  {form.patient_condition === OTHER && (
+                    <TextInput placeholder="Type your condition, e.g. asthma"
+                      value={form.patient_condition_other}
+                      onChange={(v) => setForm({ ...form, patient_condition_other: v })} />
+                  )}
+                </div>
+
+                <div>
+                  <Select label="Medication" value={form.medication_context} options={MEDICATIONS}
+                    onChange={(v) => setForm({ ...form, medication_context: v })} />
+                  {form.medication_context === OTHER && (
+                    <TextInput placeholder="Type your medication, e.g. levothyroxine"
+                      value={form.medication_context_other}
+                      onChange={(v) => setForm({ ...form, medication_context_other: v })} />
+                  )}
+                </div>
+
                 <Select label="Dosage form" value={form.dosage_form} options={DOSAGE_FORMS}
                   onChange={(v) => setForm({ ...form, dosage_form: v })} />
               </div>
+
+              {/* Set expectations before the answer arrives, so "Caution" does
+                  not read as a fault: the model genuinely cannot score this. */}
+              {(form.patient_condition === OTHER || form.medication_context === OTHER) && (
+                <p className="mt-3 text-xs leading-relaxed text-amber-800">
+                  The risk model was not trained on this, so it will not predict a risk
+                  level for you. You will get a Caution answer based only on what the
+                  knowledge base records for the herb, and a reminder to check with a
+                  practitioner.
+                </p>
+              )}
 
               <button type="submit" disabled={loading}
                 className="mt-4 rounded-full bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
@@ -287,8 +337,23 @@ function Select({ label, value, options, onChange }) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400"
       >
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {options.map((o) => (
+          <option key={o} value={o}>{o === OTHER ? "other (not listed)" : o}</option>
+        ))}
       </select>
     </label>
+  );
+}
+
+/** Free-text box shown under a dropdown that is set to "other". */
+function TextInput({ value, placeholder, onChange }) {
+  return (
+    <input
+      type="text"
+      value={value || ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-amber-500"
+    />
   );
 }

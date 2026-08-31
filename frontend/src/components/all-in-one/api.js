@@ -32,3 +32,15 @@ export async function getMember2Health() {
   const res = await fetch(`${API_URL}/api/member2/health`);
   return res.json();
 }
+
+/**
+ * POST an image to an image-classifying module (member1, member3).
+ * The field name must be `file` — that is what the FastAPI routers expect.
+ * Do NOT set Content-Type here; the browser adds the multipart boundary.
+ */
+export async function predictImage(endpoint, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}${endpoint}`, { method: "POST", body: form });
+  return res.json();
+}

@@ -2,6 +2,20 @@ import { ShieldCheck, ShieldAlert, Info, CornerDownRight } from "lucide-react";
 import { RISK_STYLES } from "../models";
 
 /**
+ * Pulls the "Safety note: ..." paragraph out of the answer so it can be shown
+ * last and in a quieter, smaller style. The model often writes it mid-answer,
+ * ahead of details such as edible parts, which buries the rest of the answer.
+ */
+function splitSafetyNote(answer) {
+  const isNote = (p) => /^\**\s*safety note\b/i.test(p.trim());
+  const paragraphs = String(answer ?? "").split(/\n\s*\n/);
+  return {
+    body: paragraphs.filter((p) => !isNote(p)).join("\n\n").trim(),
+    note: paragraphs.filter(isNote).join("\n\n").trim(),
+  };
+}
+
+/**
  * Renders one answer from the RAG herb assistant (Member 2).
  *
  * Dark port of the layout used on src/app/member2/page.js, plus the outOfScope
@@ -10,6 +24,7 @@ import { RISK_STYLES } from "../models";
 export default function HerbAnswerResult({ data }) {
   const riskCls = data.riskLevel ? RISK_STYLES[data.riskLevel] : null;
   const RiskIcon = data.riskLevel === "Safe" ? ShieldCheck : ShieldAlert;
+  const { body, note } = splitSafetyNote(data.answer);
 
   return (
     <div>
@@ -83,8 +98,15 @@ export default function HerbAnswerResult({ data }) {
       )}
 
       <div className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
-        {data.answer}
+        {body}
       </div>
+
+      {/* Safety note: always last, and smaller/quieter than the answer itself. */}
+      {note && (
+        <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
+          {note}
+        </p>
+      )}
 
       {data.outOfScope && (
         <p className="mt-3 text-xs text-zinc-500">
