@@ -11,6 +11,7 @@ import ComingSoonPanel from "./ComingSoonPanel";
 import HealthContextForm from "./HealthContextForm";
 import HealthContextChip from "./HealthContextChip";
 import { askMember2, getMember2Health, predictImage } from "./api";
+import { loadSession, saveSession, clearSession } from "./sessionStore";
 import {
   MODELS, DEFAULT_MODEL_ID, DEFAULT_HEALTH_FORM, getModel, toHealthContext, API_URL,
 } from "./models";
@@ -34,6 +35,10 @@ export default function AllInOneChat() {
   const [health, setHealth] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // False until the saved tab session has been read back. Saving before that
+  // would overwrite the stored session with the empty initial state.
+  const [restored, setRestored] = useState(false);
+
   // Image attached but not yet sent: { file, previewUrl, name }
   const [pending, setPending] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -48,6 +53,38 @@ export default function AllInOneChat() {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
   }, []);
+
+  // Restore the tab's previous state after mount, never during render: the
+  // server has no sessionStorage, so reading it in a state initialiser would
+  // make the first client render disagree with the HTML and trip hydration.
+  useEffect(() => {
+    const saved = loadSession();
+    if (saved) {
+      if (saved.modelId) setModelId(saved.modelId);
+      if (Array.isArray(saved.messages)) setMessages(saved.messages);
+      if (typeof saved.input === "string") setInput(saved.input);
+      if (saved.healthContext) setHealthContext(saved.healthContext);
+      // Merged over the defaults so a session saved by an older build, before
+      // the "other" free-text fields existed, still yields a complete form.
+      if (saved.form) setForm({ ...DEFAULT_HEALTH_FORM, ...saved.form });
+      if (saved.lastHerb) setLastHerb(saved.lastHerb);
+      if (saved.pendingQuery) setPendingQuery(saved.pendingQuery);
+      if (Array.isArray(saved.followups)) setFollowups(saved.followups);
+    }
+    setRestored(true);
+  }, []);
+
+  // Mirror the conversation into sessionStorage on every change, including each
+  // keystroke in the composer and each edit in the questionnaire — those are
+  // exactly what a mistimed refresh used to throw away.
+  useEffect(() => {
+    if (!restored) return;
+    saveSession({
+      modelId, messages, input, healthContext, form, lastHerb,
+      pendingQuery, followups,
+    });
+  }, [restored, modelId, messages, input, healthContext, form, lastHerb,
+      pendingQuery, followups]);
 
   // Cheap check that does not force the pipeline to load.
   useEffect(() => {
@@ -187,6 +224,9 @@ export default function AllInOneChat() {
     setFollowups([]);
     setSidebarOpen(false);
     clearPending();
+    // Drop the stored copy too, so "New chat" is not undone by a refresh. The
+    // save effect writes the fresh empty state back on the next render.
+    clearSession();
   }
 
   function selectModel(id) {
