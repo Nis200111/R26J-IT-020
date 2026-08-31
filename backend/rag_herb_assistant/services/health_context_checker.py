@@ -45,9 +45,11 @@ QUESTION_POOL = {
     "age":         "What is your age group? (child / adult / elderly)",
     "pregnancy":   "Are you pregnant or breastfeeding?",
     "conditions":  "Do you have any conditions such as diabetes, kidney disease, "
-                   "liver disease, or hypertension?",
+                   "liver disease, or hypertension? If yours is not listed, "
+                   "choose 'other' and type it in.",
     "medication":  "Are you currently taking any medication? "
-                   "(e.g. insulin, metformin, blood thinners)",
+                   "(e.g. insulin, metformin, blood thinners — choose 'other' "
+                   "to type one that is not listed)",
     "dosage_form": "What dosage form are you considering? "
                    "(herbal tea / powder / capsule / decoction)",
     "herb_or_disease": "Which specific herb or disease are you asking about?",
@@ -111,14 +113,29 @@ def get_followup_questions(query: str, intent: str) -> list:
     return questions
 
 
+def _clean(value, default):
+    """
+    Normalise one answer.
+
+    The condition and medication fields can now carry free text typed by a user
+    whose situation is not on the dropdown ("Asthma ", "thyroid  disease"), so
+    whitespace and case are levelled out here. That keeps "Asthma" and "asthma"
+    from looking like two different unknown categories downstream, while still
+    leaving the value unrecognised by the classifier's encoders — which is the
+    point: predict_risk must be able to tell that it cannot score this.
+    """
+    text = " ".join(str(value or "").split()).lower()
+    return text or default
+
+
 def build_health_context(answers: dict) -> dict:
     """Map collected answers to the 5 features the risk classifier expects."""
     return {
         "herb_name": answers.get("herb_name", "unknown"),
-        "patient_condition": answers.get("patient_condition", "none"),
-        "medication_context": answers.get("medication_context", "none"),
-        "age_group": answers.get("age_group", "adult"),
-        "dosage_form": answers.get("dosage_form", "powder"),
+        "patient_condition": _clean(answers.get("patient_condition"), "none"),
+        "medication_context": _clean(answers.get("medication_context"), "none"),
+        "age_group": _clean(answers.get("age_group"), "adult"),
+        "dosage_form": _clean(answers.get("dosage_form"), "powder"),
     }
 
 
