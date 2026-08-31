@@ -79,22 +79,41 @@ def log_query(query, intent, risk_level, result_type):
                     query, intent or "", risk_level or "", result_type])
 
 
-def ask_context_interactively(followups):
-    """Show follow-up questions and collect answers from the user (once)."""
+def ask_context_interactively(followups, known=None):
+    """
+    Show follow-up questions and collect answers from the user (once).
+
+    `known` carries what the query already stated. Those fields become the
+    defaults, so pressing Enter keeps what the user said rather than resetting
+    to "adult / none / none" - which would score a pregnancy question for
+    someone who is not pregnant.
+    """
+    known = known or {}
     print("\n  I need a few safety details first (asked only once per session):")
     for i, q in enumerate(followups, 1):
         print(f"    {i}. {q}")
-    print("\n  (Answer the ones you can; press Enter to skip.)")
+    if known:
+        stated = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in known.items())
+        print(f"\n  Taken from your question - {stated}.")
+    print("\n  (Answer the ones you can; press Enter to keep the default.)")
+
+    def prompt(label, field, fallback):
+        default = known.get(field, fallback)
+        return input(f"  {label} [{default}]: ").strip() or default
+
     ctx = {}
-    ctx["age_group"] = input("  Age group (child/adult/elderly): ").strip() or "adult"
+    ctx["age_group"] = prompt("Age group (child/adult/elderly)", "age_group", "adult")
     # Anything outside the listed categories is accepted and passed through:
     # predict_risk answers "Caution" with a warning rather than scoring it.
-    ctx["patient_condition"] = input("  Condition (none/pregnancy/breastfeeding/diabetes/"
-                                     "hypertension/kidney disease/liver disease/heart disease, "
-                                     "or type your own): ").strip() or "none"
-    ctx["medication_context"] = input("  Medication (none/antidiabetic/antihypertensive/"
-                                      "anticoagulant/antibiotics, or type your own): ").strip() or "none"
-    ctx["dosage_form"] = input("  Dosage form (herbal tea/powder/capsule/decoction): ").strip() or "powder"
+    ctx["patient_condition"] = prompt(
+        "Condition (none/pregnancy/breastfeeding/diabetes/hypertension/"
+        "kidney disease/liver disease/heart disease, or type your own)",
+        "patient_condition", "none")
+    ctx["medication_context"] = prompt(
+        "Medication (none/antidiabetic/antihypertensive/anticoagulant/"
+        "antibiotics, or type your own)", "medication_context", "none")
+    ctx["dosage_form"] = prompt(
+        "Dosage form (herbal tea/powder/capsule/decoction)", "dosage_form", "powder")
     return ctx
 
 
@@ -149,7 +168,8 @@ def main():
         # Health context needed and not yet collected -> ask ONCE, then reuse.
         if result["type"] == "need_context":
             print(f"\n  [Intent detected: {result['intent']}]")
-            session_context = ask_context_interactively(result["followup_questions"])
+            session_context = ask_context_interactively(
+                result["followup_questions"], result.get("known_context"))
             save_session(session_context)   # persist for future runs
             print("  [Saved. You will not be asked again, even after restart.]")
             result = pipe.answer_query(query, health_context=session_context)
