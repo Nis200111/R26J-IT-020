@@ -291,16 +291,33 @@ class HerbRAGPipeline:
             row.append(le.transform([val])[0])
 
         if unknown_inputs:
-            details = ", ".join(f"{k}='{v}'" for k, v in unknown_inputs.items())
+            said = ", ".join(f"{v} ({k.replace('_', ' ')})"
+                             for k, v in unknown_inputs.items())
+            known = "; ".join(
+                f"{col.replace('_', ' ')}: "
+                + ", ".join(str(c) for c in self.feature_encoders[col].classes_)
+                for col in unknown_inputs
+            )
             return {
                 "risk_level": "Caution",
                 "top_factors": list(unknown_inputs.keys()),
-                "explanation": [],
+                # Echo what the user told us, so the answer still visibly takes
+                # their condition into account even though it was not scored.
+                "explanation": [
+                    {"feature": k, "value": v, "impact": None}
+                    for k, v in unknown_inputs.items()
+                ],
+                # Machine-readable twin of the warning: the answer generator uses
+                # it to name the condition in the answer, and the UI could use it
+                # to style the notice.
+                "unknown_context": unknown_inputs,
                 "warning": (
-                    f"The value(s) {details} are outside the system's training "
-                    f"data, so an accurate risk prediction is not possible. "
-                    f"Defaulting to 'Caution' — please consult a qualified "
-                    f"medical or Ayurvedic practitioner."
+                    f"You told us: {said}. The risk model was not trained on "
+                    f"that, so no risk level is being predicted for you — the "
+                    f"answer is marked Caution and reflects only what the "
+                    f"knowledge base records about the herb. Please check with "
+                    f"a qualified Ayurvedic or medical practitioner. "
+                    f"It can only score {known}."
                 ),
             }
 
@@ -341,6 +358,58 @@ class HerbRAGPipeline:
             if re.search(pattern, q):
                 found[field] = value
         return found
+
+    # "I have <something>" where <something> is not one of the seven conditions
+    # the classifier knows. Kept deliberately narrow, because a false positive
+    # here downgrades a perfectly answerable question to "Caution".
+    _FREE_CONDITION = re.compile(
+        r"\bi (?:have|suffer from|am suffering from|was diagnosed with)\s+"
+        r"((?:[a-z]+ ){0,2}[a-z]+)"
+    )
+    # Words that show the captured phrase is not a diagnosis, plus the
+    # conditions _SELF_STATED already maps to a trained category.
+    _NOT_A_CONDITION = {
+        "question", "questions", "doubt", "herb", "herbs", "plant", "plants",
+        "some", "this", "that", "these", "those", "it", "a", "an", "no", "none",
+        "used", "taken", "tried", "been", "read", "heard", "one", "two", "them",
+        "medicine", "medication", "medications", "tablets", "the", "my", "your",
+        "diabetes", "diabetic", "pregnancy", "pregnant", "kidney", "liver",
+        "heart", "hypertension", "cardiac", "renal",
+    }
+    # The diagnosis ends here: "thyroid disease can i take X" is "thyroid
+    # disease", not "thyroid disease can".
+    _CLAUSE_BREAK = {
+        "can", "could", "should", "would", "may", "is", "are", "was", "were",
+        "do", "does", "did", "will", "and", "but", "so", "if", "when", "while",
+        "what", "which", "who", "how", "why", "please", "i", "we", "you",
+        "for", "with", "to", "of", "in", "on", "at", "from", "about",
+    }
+
+    def _free_condition_from_query(self, query: str):
+        """
+        Pull a condition the classifier was never trained on out of the query,
+        e.g. "I have asthma" -> "asthma".
+
+        Returns None unless the phrase looks like an actual diagnosis: the known
+        conditions are already handled by _SELF_STATED, and anything containing a
+        filler word is rejected rather than guessed at.
+        """
+        m = self._FREE_CONDITION.search((query or "").lower())
+        if not m:
+            return None
+
+        words = []
+        for w in re.sub(r"\s+", " ", m.group(1)).strip(" .,?").split():
+            if w in self._CLAUSE_BREAK:
+                break
+            words.append(w)
+
+        phrase = " ".join(words)
+        if len(phrase) < 4:
+            return None
+        if any(w in self._NOT_A_CONDITION for w in words):
+            return None
+        return phrase
 
     def _explain_risk(self, X, predicted_class, ctx) -> list:
         """
@@ -426,6 +495,33 @@ class HerbRAGPipeline:
         if risk:
             safety = (f"\nSafety risk level for this user context: {risk['risk_level']} "
                       f"(main factors: {', '.join(risk['top_factors'])}).")
+
+        # The user's own context, in words. Without this the answer never
+        # mentions the condition they typed, which matters most exactly when the
+        # risk classifier could not score it: the retrieved records are then the
+        # only safety signal left, so the model has to be told what to check for.
+        profile = ""
+        unknown_note = ""
+        if health_context:
+            hc = build_health_context(health_context)
+            stated = [f"{k.replace('_', ' ')}: {v}"
+                      for k, v in (("patient_condition", hc["patient_condition"]),
+                                   ("medication_context", hc["medication_context"]),
+                                   ("age_group", hc["age_group"]),
+                                   ("dosage_form", hc["dosage_form"]))
+                      if v and v != "none"]
+            if stated:
+                profile = "\n=== THIS USER ===\n" + "; ".join(stated)
+            unknown = (risk or {}).get("unknown_context") or {}
+            condition = unknown.get("patient_condition") or unknown.get("medication_context")
+            if condition:
+                unknown_note = (
+                    f"\nThe user's '{condition}' is not a category the risk "
+                    f"classifier knows, so the records are the only safety "
+                    f"evidence available. State plainly whether the records "
+                    f"mention '{condition}' and, if they do not, say so instead "
+                    f"of reasoning about it."
+                )
         return (
             "You are a Sri Lankan medicinal herb knowledge assistant.\n"
             "Answer the user's question ONLY using the herb records provided below.\n"
@@ -447,6 +543,10 @@ class HerbRAGPipeline:
             "recorded and refer the user to a practitioner.\n"
             "4. If the records are about completely different herbs than the "
             f"one asked about, reply exactly: \"{FALLBACK_ANSWER}\"\n"
+            "5. If a health profile for this user is given below, check the "
+            "recorded contraindications against it and say whether the records "
+            "mention that condition or medication. Do not invent an interaction "
+            "that the records do not state.\n"
             "Always add a short safety note telling the user to consult a qualified "
             "Ayurvedic or medical practitioner for personal use.\n"
             "ANSWER LENGTH: if the user asks about a herb in general, describe "
@@ -456,7 +556,8 @@ class HerbRAGPipeline:
             "safety, answer just that point.\n"
             "Write only the answer itself. Do not repeat these instructions or "
             "any list of headings from them.\n\n"
-            f"=== HERB RECORDS ===\n{context_text}\n{safety}\n\n"
+            f"=== HERB RECORDS ===\n{context_text}\n{safety}{unknown_note}"
+            f"{profile}\n\n"
             f"=== USER QUESTION ===\n{query}\n\n=== ANSWER ==="
         )
 
@@ -623,6 +724,7 @@ class HerbRAGPipeline:
         records = self.rerank(query, candidates, top_n=4)
 
         risk = None
+        effective_ctx = health_context
         if needs_ctx and health_context is not None:
             hc = dict(health_context)
             # A condition stated in the query outranks the stored profile.
@@ -630,10 +732,25 @@ class HerbRAGPipeline:
             # saved profile that still says patient_condition = "none", or the
             # safety check silently evaluates the wrong person.
             hc.update(self._context_from_query(query))
+
+            # A condition the classifier has no category for ("I have asthma")
+            # would otherwise be dropped, and the answer scored as if the user
+            # had said "none". Carry it through so predict_risk can see that it
+            # is unknown and return Caution instead of a confident "Safe".
+            # "other" means the user chose the escape hatch but typed nothing,
+            # so the query is still the better source.
+            stated = str(hc.get("patient_condition", "none")).strip().lower()
+            if stated in ("", "none", "other"):
+                free = self._free_condition_from_query(query)
+                if free:
+                    hc["patient_condition"] = free
+
             hc.setdefault("herb_name", records[0].get("herb_name_english", "unknown"))
             risk = self.predict_risk(hc)
+            # The answer must describe the same person the risk was scored for.
+            effective_ctx = hc
 
-        answer = self.generate_answer(query, records, health_context, risk)
+        answer = self.generate_answer(query, records, effective_ctx, risk)
         return {
             "type": "answer",
             "intent": intent,
