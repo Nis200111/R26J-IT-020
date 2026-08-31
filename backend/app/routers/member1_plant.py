@@ -23,8 +23,26 @@ reports this; `explain=true` on /predict is accepted but returns no heatmap.
 
 from __future__ import annotations
 
+import importlib.util
 import io
+import json
+import logging
 import os
+import time
+from pathlib import Path
+from typing import Optional
+
+# model_v2_efficientnetv2b0.keras is a plain Keras 3 archive, so it runs on any
+# Keras backend. TensorFlow is the default and is what this model was trained
+# with, but it has no wheel for Python 3.14+ -- there we fall back to torch.
+# Anyone can override with KERAS_BACKEND in the environment. Must run before
+# keras is imported, and this router is imported before member3, so the same
+# fallback has to live here too.
+if not os.environ.get("KERAS_BACKEND"):
+    for _backend in ("tensorflow", "torch", "jax"):
+        if importlib.util.find_spec(_backend) is not None:
+            os.environ["KERAS_BACKEND"] = _backend
+            break
 
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
@@ -33,13 +51,22 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 log = logging.getLogger("member1")
 router = APIRouter()
 
+# --------------------------------------------------------------------------- #
+# configuration
+# --------------------------------------------------------------------------- #
 # Resolved relative to THIS file, not the current working directory, so the
 # model still loads when uvicorn is started from somewhere other than backend/.
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "models", "member1",
-    "model_v2_efficientnetv2b0.keras",
+_DEFAULT_MODEL_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "models" / "member1" / "model_v2_efficientnetv2b0.keras"
 )
-IMG_SIZE = (224, 224)
+MODEL_PATH = Path(os.environ.get("MEMBER1_MODEL_PATH", _DEFAULT_MODEL_PATH))
+CONFIG_PATH = MODEL_PATH.parent / "calibration.json"
+
+LOAD_SIZE = 256           # resize the whole image to this square first
+IMG_SIZE = (224, 224)     # then centre-crop to this — matches training exactly
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+TOP_K = 5
 
 CLASS_NAMES = [
     "Abutilon_indicum", "Andrographis_paniculata", "Boehmeria_nivea", "Boerhavia_diffusa",
