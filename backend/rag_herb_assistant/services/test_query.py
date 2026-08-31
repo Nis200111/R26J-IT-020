@@ -87,10 +87,13 @@ def ask_context_interactively(followups):
     print("\n  (Answer the ones you can; press Enter to skip.)")
     ctx = {}
     ctx["age_group"] = input("  Age group (child/adult/elderly): ").strip() or "adult"
+    # Anything outside the listed categories is accepted and passed through:
+    # predict_risk answers "Caution" with a warning rather than scoring it.
     ctx["patient_condition"] = input("  Condition (none/pregnancy/breastfeeding/diabetes/"
-                                     "hypertension/kidney disease/liver disease/heart disease): ").strip() or "none"
+                                     "hypertension/kidney disease/liver disease/heart disease, "
+                                     "or type your own): ").strip() or "none"
     ctx["medication_context"] = input("  Medication (none/antidiabetic/antihypertensive/"
-                                      "anticoagulant/antibiotics): ").strip() or "none"
+                                      "anticoagulant/antibiotics, or type your own): ").strip() or "none"
     ctx["dosage_form"] = input("  Dosage form (herbal tea/powder/capsule/decoction): ").strip() or "powder"
     return ctx
 
