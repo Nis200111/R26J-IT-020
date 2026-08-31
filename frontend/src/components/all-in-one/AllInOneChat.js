@@ -12,7 +12,7 @@ import HealthContextForm from "./HealthContextForm";
 import HealthContextChip from "./HealthContextChip";
 import { askMember2, getMember2Health, predictImage } from "./api";
 import {
-  MODELS, DEFAULT_MODEL_ID, DEFAULT_HEALTH_FORM, getModel, API_URL,
+  MODELS, DEFAULT_MODEL_ID, DEFAULT_HEALTH_FORM, getModel, toHealthContext, API_URL,
 } from "./models";
 
 const newId = () =>
@@ -164,10 +164,13 @@ export default function AllInOneChat() {
   function submitContext(e) {
     e.preventDefault();
     const q = pendingQuery;
-    setHealthContext(form);
+    // The form carries the raw questionnaire state, including the free-text box
+    // shown for "other". toHealthContext folds that down to the 4 API fields.
+    const ctx = toHealthContext(form);
+    setHealthContext(ctx);
     setPendingQuery(null);
     setFollowups([]);
-    runMember2(q, form);
+    runMember2(q, ctx);
   }
 
   /** Re-send the most recent user message after a failure. */
