@@ -44,7 +44,7 @@ Figures for each are saved in `notebooks/*.png`.
 
 ### Honest notes on these numbers
 
-- The intent classifier scores **100% under a naive query-level split**, because randomly splitting queries puts the same phrasing templates in both training and test. The **86.58% template-level score** is the meaningful one — it measures generalisation to phrasings the model has never seen. Both are reported in notebook 02.
+- The intent classifier's **95.03% query-level score** is flattered by the split: randomly splitting queries puts the same phrasing templates in both training and test, so the model only has to recognise a phrasing it has already seen. The **86.58% template-level score** is the meaningful one — it holds out whole templates and measures generalisation to phrasings the model has never seen. Both are reported in notebook 02.
 - The training set contains ~10% **deliberately ambiguous queries** (e.g. *"is X good for diabetes"*, which is defensibly both `herb-disease` and `contraindication`). This imposes a theoretical accuracy ceiling of ~94.9%, reflecting real annotation uncertainty.
 - **Faithfulness is threshold-sensitive.** With the support threshold at 0.50 it is 96.02%; at 0.60 it is 86.47%. The reported figure should always be quoted with its threshold.
 - **Context precision (34.50%) and answer relevancy (55.45%) are understated** by the local metric implementation, which compares a short question or ground-truth string against a full herb record. They are recorded in notebook 05 but should not be read as retrieval quality.

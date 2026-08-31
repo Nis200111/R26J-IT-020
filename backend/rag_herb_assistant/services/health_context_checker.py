@@ -113,6 +113,76 @@ def get_followup_questions(query: str, intent: str) -> list:
     return questions
 
 
+# Sub-mappings used only by infer_context_from_query. Every phrase here is
+# already in KNOWN_CONTEXT_KEYWORDS, so this never widens what the module
+# detects - it only translates a detection into the category the risk
+# classifier was trained on.
+_AGE_HINTS = {
+    "child":   ["child", "children", "baby", "infant"],
+    "elderly": ["elderly", "old age"],
+}
+_MEDICATION_HINTS = {
+    "antidiabetic":  ["insulin", "metformin"],
+    "anticoagulant": ["warfarin", "blood thinner", "anticoagulant"],
+}
+# A condition named in the query implies its drug class when the query says
+# "medication" without naming the drug ("my diabetes medication").
+_CONDITION_TO_DRUG = {
+    "diabetes":     "antidiabetic",
+    "hypertension": "antihypertensive",
+}
+# Only one patient_condition slot exists, so a query stating two is resolved by
+# this order. Pregnancy and breastfeeding come first: they change what is safe
+# more sharply than the chronic conditions do.
+_CONDITION_PRIORITY = [
+    "pregnancy", "breastfeeding", "kidney disease", "liver disease",
+    "heart disease", "diabetes", "hypertension",
+]
+
+
+def infer_context_from_query(query: str) -> dict:
+    """
+    Translate what the query already stated into risk-classifier categories.
+
+    get_followup_questions() drops a question the query has already answered.
+    Without this, that information is then lost: the questionnaire falls back to
+    its defaults and the classifier scores "adult / none / none", so
+    "is Kohomba safe during pregnancy" is answered for someone who is not
+    pregnant, and "can children take Neem" is answered for an adult. Both come
+    back Safe when they should come back Caution.
+
+    Returns only the fields it can actually determine. A field left out here is
+    one the user is still asked about.
+    """
+    q = (query or "").lower()
+    known = detect_known_context(q)
+    inferred = {}
+
+    for condition in _CONDITION_PRIORITY:
+        if condition in known:
+            inferred["patient_condition"] = condition
+            break
+
+    for group, words in _AGE_HINTS.items():
+        if any(w in q for w in words):
+            inferred["age_group"] = group
+            break
+
+    if "medication" in known:
+        for drug, words in _MEDICATION_HINTS.items():
+            if any(w in q for w in words):
+                inferred["medication_context"] = drug
+                break
+        else:
+            # The query says the user takes something but never names it. Guess
+            # from the condition if we can; otherwise send an unknown category
+            # so predict_risk returns Caution instead of scoring "no medication".
+            condition = inferred.get("patient_condition")
+            inferred["medication_context"] = _CONDITION_TO_DRUG.get(condition, "other")
+
+    return inferred
+
+
 def _clean(value, default):
     """
     Normalise one answer.

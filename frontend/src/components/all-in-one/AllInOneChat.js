@@ -31,6 +31,8 @@ export default function AllInOneChat() {
   const [pendingQuery, setPendingQuery] = useState(null);
   const [followups, setFollowups] = useState([]);
   const [form, setForm] = useState(DEFAULT_HEALTH_FORM);
+  // Which form fields were filled in from the query rather than by the user.
+  const [knownFields, setKnownFields] = useState([]);
 
   const [health, setHealth] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,6 +72,7 @@ export default function AllInOneChat() {
       if (saved.lastHerb) setLastHerb(saved.lastHerb);
       if (saved.pendingQuery) setPendingQuery(saved.pendingQuery);
       if (Array.isArray(saved.followups)) setFollowups(saved.followups);
+      if (Array.isArray(saved.knownFields)) setKnownFields(saved.knownFields);
     }
     setRestored(true);
   }, []);
@@ -81,10 +84,10 @@ export default function AllInOneChat() {
     if (!restored) return;
     saveSession({
       modelId, messages, input, healthContext, form, lastHerb,
-      pendingQuery, followups,
+      pendingQuery, followups, knownFields,
     });
   }, [restored, modelId, messages, input, healthContext, form, lastHerb,
-      pendingQuery, followups]);
+      pendingQuery, followups, knownFields]);
 
   // Cheap check that does not force the pipeline to load.
   useEffect(() => {
@@ -125,6 +128,12 @@ export default function AllInOneChat() {
       if (data.needsContext) {
         setPendingQuery(query);
         setFollowups(data.followupQuestions || []);
+        // The backend skipped the questions the query already answered. Fill
+        // those answers in, or they are lost and the classifier scores the
+        // defaults instead of what the user actually said.
+        const known = data.knownContext || {};
+        setKnownFields(Object.keys(known));
+        setForm((f) => ({ ...f, ...known }));
         return;
       }
 
@@ -207,6 +216,7 @@ export default function AllInOneChat() {
     setHealthContext(ctx);
     setPendingQuery(null);
     setFollowups([]);
+    setKnownFields([]);
     runMember2(q, ctx);
   }
 
@@ -310,6 +320,7 @@ export default function AllInOneChat() {
               {pendingQuery && (
                 <HealthContextForm
                   followups={followups}
+                  knownFields={knownFields}
                   form={form}
                   onChange={setForm}
                   onSubmit={submitContext}

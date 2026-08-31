@@ -120,6 +120,9 @@ async def ask(body: AskRequest):
                 "needsContext": True,
                 "intent": result["intent"],
                 "followupQuestions": result["followup_questions"],
+                # Fields the query already stated, so the questionnaire can
+                # carry them instead of falling back to "adult / none / none".
+                "knownContext": result.get("known_context") or {},
                 "corrections": result.get("corrections") or [],
             }
 
