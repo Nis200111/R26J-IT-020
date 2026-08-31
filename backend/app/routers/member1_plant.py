@@ -80,12 +80,16 @@ MARGIN_LOW = 0.15
 # load once
 # --------------------------------------------------------------------------- #
 model = None
+grad_model = None
 model_load_error: Optional[str] = None
 _explain_available = False
 _loaded_at = None
 
 try:
+    import base64
+    import cv2
     import keras
+    import tensorflow as tf
 
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"no model at {MODEL_PATH.resolve()}")
@@ -95,6 +99,13 @@ try:
     n_out = int(model.output_shape[-1])
     if n_out != len(CLASS_NAMES):
         raise ValueError(f"model has {n_out} outputs, CLASS_NAMES has {len(CLASS_NAMES)}")
+
+    try:
+        last_conv = model.get_layer("top_conv")
+        grad_model = tf.keras.models.Model(inputs=model.inputs, outputs=[last_conv.output, model.output])
+        _explain_available = True
+    except Exception as e:
+        log.warning("Grad-CAM submodel initialization skipped: %s", e)
 
     if CONFIG_PATH.exists():
         _cfg = json.loads(CONFIG_PATH.read_text())
@@ -133,6 +144,45 @@ def preprocess(raw: bytes) -> np.ndarray:
     im = im.crop((off, off, off + IMG_SIZE[0], off + IMG_SIZE[1]))
 
     return np.asarray(im, dtype="float32")
+
+
+def compute_gradcam(arr: np.ndarray, pred_index: int) -> Optional[str]:
+    if grad_model is None:
+        return None
+    try:
+        import base64
+        import cv2
+        import tensorflow as tf
+
+        inp = np.expand_dims(arr, axis=0)
+        with tf.GradientTape() as tape:
+            conv_outputs, predictions = grad_model(inp)
+            loss = predictions[:, pred_index]
+
+        grads = tape.gradient(loss, conv_outputs)
+        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+        conv_outputs = conv_outputs[0]
+        heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
+        heatmap = tf.squeeze(heatmap)
+        heatmap = tf.maximum(heatmap, 0)
+        max_val = tf.math.reduce_max(heatmap)
+        if max_val > 0:
+            heatmap = heatmap / max_val
+        heatmap_np = heatmap.numpy()
+
+        heatmap_resized = cv2.resize(heatmap_np, (IMG_SIZE[0], IMG_SIZE[1]))
+        heatmap_uint8 = np.uint8(255 * heatmap_resized)
+        color_heatmap = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
+
+        img_uint8 = np.uint8(np.clip(arr, 0, 255))
+        superimposed = cv2.addWeighted(img_uint8, 0.6, color_heatmap, 0.4, 0)
+
+        _, buffer = cv2.imencode('.png', cv2.cvtColor(superimposed, cv2.COLOR_BGR2RGB))
+        encoded = base64.b64encode(buffer).decode('utf-8')
+        return f"data:image/png;base64,{encoded}"
+    except Exception as exc:
+        log.warning("Failed to compute Grad-CAM heatmap: %s", exc)
+        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -177,8 +227,9 @@ def run_prediction(arr: np.ndarray, tta: bool = False, explain: bool = False) ->
         "tta": tta,
     }
 
-    if explain:
-        # Not available for this model export — see module docstring.
+    if explain and _explain_available:
+        result["heatmap"] = compute_gradcam(arr, order[0])
+    else:
         result["heatmap"] = None
 
     return result

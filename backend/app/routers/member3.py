@@ -16,18 +16,25 @@ model = None
 model_load_error = None
 tf = None
 
-try:
-    import tensorflow as _tf
-    tf = _tf
-    if os.path.exists(MODEL_PATH):
-        model = tf.keras.models.load_model(MODEL_PATH)
-        print(f"[Member3] Model loaded successfully from {MODEL_PATH}")
-    else:
-        model_load_error = f"Model file not found at {MODEL_PATH}"
-        print(f"[Member3] {model_load_error}")
-except Exception as e:
-    model_load_error = str(e)
-    print(f"[Member3] Failed to load model: {model_load_error}")
+def get_model():
+    global model, model_load_error, tf
+    if model is not None:
+        return model
+    try:
+        import tensorflow as _tf
+        tf = _tf
+        if os.path.exists(MODEL_PATH):
+            model = tf.keras.models.load_model(MODEL_PATH)
+            model_load_error = None
+            print(f"[Member3] Model loaded successfully from {MODEL_PATH}")
+        else:
+            model_load_error = f"Model file not found at {MODEL_PATH}"
+            print(f"[Member3] {model_load_error}")
+    except Exception as e:
+        model_load_error = str(e)
+        print(f"[Member3] Failed to load model: {model_load_error}")
+    return model
+
 
 
 def preprocess_image(image: Image.Image) -> np.ndarray:
@@ -88,7 +95,8 @@ def get_ayurvedic_grade(predicted_class: str, confidence: float) -> dict:
 
 @router.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    if model is None:
+    m = get_model()
+    if m is None:
         error_msg = model_load_error or "Model not loaded."
         return {"error": True, "message": f"Model unavailable: {error_msg}"}
 
@@ -97,7 +105,7 @@ async def predict(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents)).convert("RGB")
 
         img_array = preprocess_image(image)
-        prediction = model.predict(img_array, verbose=0)
+        prediction = m.predict(img_array, verbose=0)
 
         # Multi-class classification: 5 classes
         predicted_index = int(np.argmax(prediction[0]))

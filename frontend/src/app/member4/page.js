@@ -5,7 +5,7 @@ export default function Member4Page() {
   return (
     <div className="min-h-screen bg-[#faf9f6]">
       <PageHeader
-        eyebrow="Member 4 · Infrastructure"
+        eyebrow="MEMBER 4 · SYSTEM INFRASTRUCTURE GATEWAY"
         title="System"
         accent="Gateway"
         description="Centralized gateway managing API traffic, system health monitoring, and secure access to the heritage AI microservices — coming soon."

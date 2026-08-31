@@ -56,7 +56,7 @@ export default function PlantDiseaseDetectionPage() {
   return (
     <div className="min-h-screen bg-[#faf9f6]">
       <PageHeader
-        eyebrow="Member 3 · Leaf Health Classification"
+        eyebrow="MEMBER 3 · MEDICINAL LEAF HEALTH DETECTION"
         title="Medicinal Leaf"
         accent="Health Detection"
         image="/herbs_banner.png"

@@ -1,0 +1,162 @@
+ Plant Identification Research  Panel Q&A
+1. What is your research about?
+Answer:
+My research is about developing a reliable AI-based plant identification system. The main focus is not only identifying a plant, but also improving the reliability of identification when visually similar plant species are present. I am also interested in preventing the system from confidently assigning an unknown plant to an incorrect known species.
+
+2. "Why did you select this research topic?"
+Answer:
+I selected this topic because plant identification can be difficult, especially when different species have very similar morphological characteristics. During my initial investigation, I found that searching for some plants using general image-search tools could return visually similar but incorrect plants. I also observed that Sri Lanka has many plants with similar appearances. Therefore, I wanted to investigate whether an AI-based system could provide more reliable species-level identification.
+
+3. "What is the real-world problem?
+Answer:
+The main problem is plant misidentification. Two different species can have very similar leaves, shapes, colours, or other morphological characteristics. If an identification system incorrectly predicts one species as another, users may receive misleading information. Therefore, accurate identification is important, particularly when plants have different medicinal, toxicological, or practical properties.
+
+
+
+
+4. "Are there already AI plant-identification systems?"
+Answer:
+Yes. There are already many AI-based plant identification systems and research studies using deep learning. Therefore, my research is not claiming that AI-based plant identification is a completely new concept. My focus is on improving reliability, particularly for visually similar species and unknown inputs.
+මේක important.Panel එකෙන් මේක අහන්න පුළුවන්. "There are already plant identification apps, so what's new?" කියලා.
+
+5. "Then what is your research gap?"
+Best answer
+Existing research has demonstrated that deep learning can successfully identify plant species. However, high overall classification accuracy does not necessarily mean that the system is reliable for visually similar species or unknown plant inputs. My research focuses on investigating these situations using an expert-validated, real-world plant dataset, particularly examining whether the system can distinguish visually similar species and avoid confidently assigning an unknown plant to an incorrect known class.
+
+6. "What do you mean by visually similar plants?"
+Answer:
+Visually similar plants are different plant species that share similar morphological characteristics, such as leaf shape, colour, size, texture, or overall appearance. Because of these similarities, both humans and AI models can potentially confuse one species with another.
+
+
+7. "Has anyone already researched visually similar plants?"
+Answer:
+Yes. There are existing studies on visually similar and morphologically confusing plant species. For example, research has investigated the identification of morphologically similar Ayurvedic medicinal plants in Sri Lanka using CNN-based approaches. Therefore, I am not claiming that this problem has never been studied. My research investigates the problem from a broader reliability perspective, including fine-grained identification and the handling of unknown or out-of-distribution inputs using my expert-validated real-world dataset.
+මේ answer එක panel එකේ ඉතා වැදගත්.
+
+8. "What is special about your dataset?"
+Answer:
+My dataset consists of real plant images that I collected rather than relying only on randomly collected internet images. I collected the plants in a real-world environment and consulted experts at Wickramarachchi University to help verify the plant identities. Therefore, the dataset is based on expert-validated plant information.
+
+9. "Why didn't you use Google images?"
+Answer:
+Internet images can be useful for expanding a dataset, but they may contain incorrect labels, duplicates, highly controlled backgrounds, or visually similar species. Since accurate plant identity is important for my research, I wanted to establish a reliable dataset using real plants and expert verification.
+Don't say: "Google images are wrong."
+Instead say:
+"Internet datasets can contain label noise and inconsistent identification."
+That's more academic.
+
+10. "Your dataset only contains correctly identified plants. Isn't that a limitation?"
+Answer:
+It can be considered a limitation for training a conventional classifier because the model primarily learns the known classes. However, I use this characteristic as part of my research problem. I want to investigate what happens when an input does not belong to those known classes and whether the system can recognize it as an unknown or uncertain input instead of forcing it into an existing class.
+This answer is very important for your research.
+
+11. "What happens if you give your model a poisonous plant?"
+Answer:
+If the poisonous plant is not included in the training classes, a conventional closed-set classifier may still assign it to one of the known classes. This can result in a false identification. Therefore, one of the problems I am investigating is whether unknown or out-of-distribution plants can be detected and flagged as uncertain rather than being confidently classified as an incorrect known species.
+
+
+
+
+
+
+
+
+12. "Are you developing a poisonous plant detection system?"
+Answer:
+No. My primary research focus is plant identification, not poisonous plant classification. The poisonous-plant scenario is an example of why reliable identification and unknown-input detection are important. I am not claiming that my system can determine whether a plant is safe or poisonous unless that information is independently verified.
+This is a very safe answer.
+
+13. "Why is wrong identification dangerous?"
+Answer:
+Wrong identification can lead to users receiving incorrect information about a plant. This can become particularly important when visually similar plants have different medicinal, toxicological, or practical properties. Therefore, my research emphasizes reducing misleading identification rather than only maximizing classification accuracy.
+
+14. "What is the difference between your research and existing plant identification research?"
+Answer:
+Existing research often focuses primarily on classification performance, such as accuracy across a predefined set of plant species. My research places greater emphasis on identification reliability, especially the confusion between visually similar species and the handling of unknown inputs. In addition, my work uses an expert-validated real-world dataset collected in the Sri Lankan context.
+
+15. "What is your novelty?"
+Answer:
+The novelty of my research is the combination of expert-validated real-world plant data, fine-grained identification of visually similar species, and investigation of unknown or out-of-distribution plant inputs. Rather than evaluating the system only through overall accuracy, I aim to evaluate how reliably it behaves in difficult identification scenarios.
+
+16. "What exactly is your research problem?"
+මේක memorize කරන්න.
+The research problem is that conventional AI-based plant identification systems may achieve high overall classification accuracy but can still misidentify visually similar species or incorrectly classify unknown plants into one of the known classes. Therefore, there is a need to investigate more reliable plant identification under these challenging conditions.
+
+17. "What is your research objective?"
+ඔයාට objectives 3ක් වගේ තියාගන්න පුළුවන්.
+Objective 1
+To develop a deep learning-based plant identification model using an expert-validated real-world dataset.
+Objective 2
+To evaluate the model's ability to distinguish visually similar plant species.
+Objective 3
+To investigate the model's ability to detect unknown or out-of-distribution plant inputs and reduce incorrect forced classifications.
+
+18. "What are your research questions?"
+RQ1
+How accurately can a deep learning model identify selected plant species using real-world images?
+RQ2
+How effectively can the model distinguish visually similar plant species?
+RQ3
+Can the proposed approach identify or reject unknown plant inputs rather than incorrectly assigning them to a known class?
+
+19. "Why is accuracy alone not enough?"
+Answer:
+Accuracy provides an overall measure of classification performance, but it may hide specific problems. For example, a model could achieve high overall accuracy while frequently confusing two visually similar species. Therefore, I will also consider precision, recall, F1-score, confusion matrices, and specifically evaluate visually similar species and unknown inputs.
+
+20. "How will you prove your research gap?
+Answer:
+I will conduct a systematic literature review and compare existing studies based on their datasets, plant species, identification methods, handling of visually similar species, handling of unknown inputs, and evaluation methods. I will then identify the limitations and position my proposed approach against those studies.
+
+21. "How will you prove that your model is better?"
+Answer:
+I will compare the proposed model with suitable baseline and existing deep learning architectures using the same evaluation protocol. I will compare accuracy, precision, recall, F1-score, confusion matrices, and performance on visually similar species. For unknown inputs, I will separately evaluate the model's ability to reject or flag samples outside the known classes.
+
+22. "What models are you going to use?"
+If you're using MobileNet:
+I am currently considering lightweight transfer-learning architectures such as MobileNet, and I can compare it with other suitable architectures such as ResNet or EfficientNet. The final model selection will be based not only on accuracy but also on computational efficiency and reliability.
+Don't say MobileNet is automatically the best.Your experiments need to prove it.
+
+23. "Why MobileNet?"
+Answer:
+MobileNet is a lightweight deep learning architecture designed to reduce computational complexity while maintaining good classification performance. Since my research aims to develop a practically usable plant identification system, computational efficiency is also an important consideration.
+
+24. "Why did you collect data from Wickramarachchi University?"
+Answer:
+I wanted to obtain reliable plant identification rather than relying only on visual assumptions. I therefore collected real plant data and consulted experts who could help verify the plant identities. This improves the reliability of the ground-truth labels used in my dataset.
+
+25. "Can your system identify every plant in the world?"
+Answer:
+No. My system will only be trained and evaluated on the plant classes represented in my dataset. However, the methodology can potentially be extended to additional plant species and larger datasets in future work.
+Never tell the panel "my system can identify every plant in the world."
+
+26. "Then why do you say your research has global value?"
+Answer:
+Although my current dataset focuses on selected Sri Lankan plant species, the underlying problem of plant misidentification is not limited to Sri Lanka. The methodology for handling visually similar species and unknown inputs can potentially be extended to broader plant identification systems.
+
+27. "What is the biggest contribution of your research?"
+Answer:
+I believe the main contribution is shifting the focus from simply achieving high plant-classification accuracy toward evaluating identification reliability in difficult real-world scenarios, particularly visually similar species and unknown plant inputs.
+
+28. What is the limitation of your research?
+Answer:
+The main limitation is that the current dataset contains a limited number of plant species compared with the enormous diversity of plants worldwide. In addition, the model's performance may depend on image quality, environmental conditions, and the number of samples available for each species. These limitations can be addressed through larger and more diverse datasets in future research.
+
+29. "What will you do if your model gives 95% accuracy?"
+Panel එක මේක අහන්න පුළුවන්.
+Answer:
+I would not consider 95% accuracy alone sufficient evidence that the system is reliable. I would investigate which species are being confused, especially visually similar species, and evaluate how the model behaves with unknown inputs. A model with slightly lower overall accuracy but significantly better behaviour on difficult cases may be more reliable in real-world use.
+🔥 මේ answer එක research mindset එක පෙන්වනවා.
+
+30. "What is the final outcome of your research?"
+Answer:
+The final outcome will be a plant identification approach that can identify the plant species represented in the dataset, evaluate difficult visually similar species, and provide an uncertainty or warning mechanism when the input cannot be reliably identified.
+
+⭐ Finally — Your whole research in 30 seconds
+Panel එක:
+"Explain your research briefly."
+ඔයා:
+"My research focuses on reliable AI-based plant identification. Existing deep learning models can achieve high accuracy in plant classification, but visually similar species can still be confused, and conventional classifiers may incorrectly assign an unknown plant to one of the known classes. To address this, I am developing and evaluating a model using an expert-validated real-world dataset collected in Sri Lanka. My research specifically investigates fine-grained identification of visually similar plants and the detection of unknown or out-of-distribution inputs. Therefore, the main focus is not only achieving high accuracy, but improving the reliability and safety of plant identification in real-world situations."
+🧠 මතක තියාගන්න main flow එක
+Existing AI exists↓But high accuracy ≠ reliable identification↓Similar plants can be confused↓Unknown plants can be forced into known classes↓Your expert-validated real-world dataset↓Test similar species↓Test unknown/OOD plants↓Evaluate reliability, not only accuracy↓
+🎯 Reliable plant identification
+මේ flow එක තමයි ඔයාගේ entire research story එක. Research gap එකත්, novelty එකත්, objectives එකත් මේකෙන් logically එනවා.

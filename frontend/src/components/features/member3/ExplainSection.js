@@ -19,7 +19,7 @@ export default function ExplainSection() {
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-500 group-hover:text-zinc-600 transition-colors duration-300">
-            AI-powered leaf health classification using EfficientNetB4 deep learning — determines whether a medicinal leaf is healthy or diseased to verify its suitability for Ayurvedic medicine production.
+            AI-powered leaf health classification using EfficientNetB4 deep learning - determines whether a medicinal leaf is healthy or diseased to verify its suitability for Ayurvedic medicine production.
           </p>
 
           <div className="space-y-3 pt-2">

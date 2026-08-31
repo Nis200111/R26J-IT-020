@@ -13,7 +13,7 @@
 
 import { useMemo, useState } from "react";
 import {
-    Search, X, Leaf, AlertTriangle, ArrowLeftRight, MapPin, Scissors, BookOpen,
+    Search, X, Leaf, AlertTriangle, ShieldCheck, ArrowLeftRight, MapPin, Scissors, BookOpen,
 } from "lucide-react";
 
 import { PLANTS, allFamilies, completeness, displayName } from "@/data/plants";
@@ -127,14 +127,13 @@ export default function HerbariumDatabase() {
                                 )}
                             </div>
                             <div className="p-4">
-                                <p className="text-sm font-bold text-slate-800 italic leading-tight">
-                                    {p.scientificName}
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                <p className="text-sm font-bold text-slate-800 leading-tight">
                                     {p.sinhalaName
-                                        || (p.sinhalaNameDraft
-                                            ? `${p.sinhalaNameDraft} · unverified`
-                                            : "Sinhala name not set")}
+                                        || p.sinhalaNameDraft
+                                        || p.scientificName}
+                                </p>
+                                <p className="text-[11px] text-slate-500 italic mt-0.5">
+                                    {p.scientificName}
                                 </p>
                                 <div className="flex items-center gap-2 mt-3">
                                     <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
@@ -161,12 +160,12 @@ export default function HerbariumDatabase() {
 
 function PlantDetail({ plant, onClose }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-slate-900/60 p-4 overflow-y-auto"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto"
             onClick={onClose} role="presentation">
-            <div className="bg-white rounded-2xl w-full max-w-3xl my-8 overflow-hidden shadow-2xl"
+            <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col my-auto"
                 onClick={(e) => e.stopPropagation()}>
 
-                <div className="relative h-56 bg-slate-100">
+                <div className="relative w-full h-64 md:h-76 shrink-0 bg-slate-100 overflow-hidden">
                     {plant.image ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={encodeURI(`/plants/${plant.image}`)} alt={plant.scientificName}
@@ -178,18 +177,18 @@ function PlantDetail({ plant, onClose }) {
                     )}
                     <button onClick={onClose} aria-label="Close"
                         className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 hover:bg-white
-                       flex items-center justify-center shadow-sm">
+                       flex items-center justify-center shadow-md z-10">
                         <X className="w-4 h-4 text-slate-700" />
                     </button>
                 </div>
 
-                <div className="p-7">
-                    <h3 className="text-2xl font-bold text-slate-800 italic">{plant.scientificName}</h3>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 mb-6 text-xs text-slate-500">
+                <div className="p-5 overflow-y-auto">
+                    <h3 className="text-xl font-bold text-slate-800">
+                        {plant.sinhalaName || plant.sinhalaNameDraft || plant.scientificName}
+                    </h3>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 mb-3 text-[11px] text-slate-500">
+                        <span><strong className="text-slate-700">Scientific Name:</strong> <em className="italic">{plant.scientificName}</em></span>
                         <span><strong className="text-slate-700">Family:</strong> {plant.family}</span>
-                        <span><strong className="text-slate-700">Sinhala:</strong>{" "}
-                            {plant.sinhalaName || (plant.sinhalaNameDraft
-                                ? `${plant.sinhalaNameDraft} (unverified)` : "not documented")}</span>
                         <span><strong className="text-slate-700">Tamil:</strong>{" "}
                             {plant.tamilName || "not documented"}</span>
                     </div>
@@ -198,31 +197,48 @@ function PlantDetail({ plant, onClose }) {
                     <Field icon={Scissors} label="Parts used" value={plant.partsUsed?.join(", ")} />
                     <Field icon={BookOpen} label="Documented uses" list={plant.uses} />
 
-                    <div className="mt-5 p-4 rounded-xl border border-red-100 bg-red-50">
-                        <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Toxicity and cautions
-                        </p>
-                        <p className="text-xs text-red-700 leading-relaxed">
-                            {plant.toxicity || "Not documented. Absence of information here does not mean the plant is safe."}
-                        </p>
-                    </div>
+                    {(() => {
+                        const tox = (plant.toxicity || "").toLowerCase();
+                        const isToxic = (tox.includes("toxic") || tox.includes("poison") || tox.includes("caution") || tox.includes("irritat") || tox.includes("alkaloid") || tox.includes("glochid"))
+                            && !tox.includes("non-toxic") && !tox.includes("no major toxicity") && !tox.includes("generally safe");
+
+                        return isToxic ? (
+                            <div className="mt-3 p-3 rounded-xl border border-red-100 bg-red-50">
+                                <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                    <AlertTriangle className="w-3 h-3 text-red-600" /> Toxicity and cautions
+                                </p>
+                                <p className="text-[11px] text-red-700 leading-relaxed">
+                                    {plant.toxicity}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="mt-3 p-3 rounded-xl border border-emerald-100 bg-emerald-50/60">
+                                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Safety & Toxicity status
+                                </p>
+                                <p className="text-[11px] text-emerald-700 leading-relaxed">
+                                    {plant.toxicity || "No major toxicity reported in traditional medicinal use."}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
                     {plant.lookAlike && (
-                        <div className="mt-4 p-4 rounded-xl border border-amber-100 bg-amber-50">
-                            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                                <ArrowLeftRight className="w-3.5 h-3.5" /> Confused with {plant.lookAlike}
+                        <div className="mt-3 p-3 rounded-xl border border-amber-100 bg-amber-50">
+                            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                                <ArrowLeftRight className="w-3 h-3" /> Confused with {plant.lookAlike}
                             </p>
-                            <p className="text-xs text-amber-700 leading-relaxed">
+                            <p className="text-[11px] text-amber-700 leading-relaxed">
                                 {plant.howToTell || "Distinguishing features not documented yet."}
                             </p>
                         </div>
                     )}
 
                     {plant.note && (
-                        <p className="mt-4 text-[11px] text-slate-400 leading-relaxed">{plant.note}</p>
+                        <p className="mt-3 text-[10px] text-slate-400 leading-relaxed">{plant.note}</p>
                     )}
 
-                    <p className="mt-6 pt-4 border-t border-slate-100 text-[10px] text-slate-400 leading-relaxed">
+                    <p className="mt-4 pt-3 border-t border-slate-100 text-[10px] text-slate-400 leading-relaxed">
                         Reference information compiled for research purposes. It is not medical advice and
                         must not be used to prepare or administer any remedy without a qualified
                         practitioner.
@@ -236,18 +252,18 @@ function PlantDetail({ plant, onClose }) {
 function Field({ icon: Icon, label, value, list }) {
     const empty = list ? !list?.length : !value;
     return (
-        <div className="mb-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                <Icon className="w-3.5 h-3.5" /> {label}
+        <div className="mb-2.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <Icon className="w-3 h-3" /> {label}
             </p>
             {empty ? (
-                <p className="text-xs text-slate-400 italic">Not documented yet.</p>
+                <p className="text-[11px] text-slate-400 italic">Not documented yet.</p>
             ) : list ? (
-                <ul className="list-disc pl-5 space-y-1">
-                    {list.map((v) => <li key={v} className="text-xs text-slate-600 leading-relaxed">{v}</li>)}
+                <ul className="list-disc pl-5 space-y-0.5">
+                    {list.map((v) => <li key={v} className="text-[11px] text-slate-600 leading-relaxed">{v}</li>)}
                 </ul>
             ) : (
-                <p className="text-xs text-slate-600 leading-relaxed">{value}</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{value}</p>
             )}
         </div>
     );

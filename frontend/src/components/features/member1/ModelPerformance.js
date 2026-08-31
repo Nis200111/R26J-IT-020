@@ -20,12 +20,26 @@ import {
     MODEL_INFO, DATASET, PER_CLASS, TRAINING, LIMITATIONS, CONFUSION_NOTES,
     weakestClasses,
 } from "@/data/modelMetrics";
+import { PLANTS } from "@/data/plants";
 
 const EMERALD = "#059669";
 const AMBER = "#d97706";
 const SLATE = "#94a3b8";
 
 const label = (s) => s.replace(/_/g, " ");
+
+function getSinhala(keyName) {
+    if (!keyName) return "";
+    const cleanKey = keyName.trim().replace(/\s+/g, "_");
+    const p = PLANTS.find((item) => item.key === cleanKey || item.scientificName === keyName || item.key === keyName);
+    return p ? (p.sinhalaName || p.sinhalaNameDraft || "") : "";
+}
+
+function fullPlantLabel(keyName) {
+    const sName = getSinhala(keyName);
+    const sciName = label(keyName);
+    return sName ? `${sName} (${sciName})` : sciName;
+}
 
 export default function ModelPerformance() {
     const [sortKey, setSortKey] = useState("f1");
@@ -102,7 +116,10 @@ export default function ModelPerformance() {
                         <tbody>
                             {rows.map((r) => (
                                 <tr key={r.name} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="py-2 pr-4 text-xs italic text-slate-700">{label(r.name)}</td>
+                                    <td className="py-2 pr-4 text-xs text-slate-700">
+                                        <span className="font-bold text-slate-800 block">{getSinhala(r.name) || label(r.name)}</span>
+                                        {getSinhala(r.name) && <span className="text-[11px] italic text-slate-400 font-normal">{label(r.name)}</span>}
+                                    </td>
                                     <Num v={r.precision} />
                                     <Num v={r.recall} />
                                     <Num v={r.f1} bold />
@@ -136,7 +153,10 @@ export default function ModelPerformance() {
                         {weakestClasses(5).map((c) => (
                             <div key={c.name} className="flex items-center justify-between gap-4">
                                 <div className="min-w-0">
-                                    <p className="text-xs italic text-slate-700 truncate">{label(c.name)}</p>
+                                    <p className="text-xs font-bold text-slate-800 truncate">
+                                        {getSinhala(c.name) ? `${getSinhala(c.name)} ` : ""}
+                                        <span className="italic font-normal text-slate-500">({label(c.name)})</span>
+                                    </p>
                                     <p className="text-[10px] text-slate-400">
                                         precision {c.precision.toFixed(2)} · recall {c.recall.toFixed(2)} ·{" "}
                                         {c.support} test images
@@ -156,9 +176,9 @@ export default function ModelPerformance() {
                     <div className="space-y-4">
                         {CONFUSION_NOTES.map((c) => (
                             <div key={c.pair.join()}>
-                                <p className="text-xs font-semibold text-slate-700 italic mb-1">
-                                    {label(c.pair[0])}
-                                    {c.pair[1] !== "—" && <> ↔ {label(c.pair[1])}</>}
+                                <p className="text-xs font-bold text-slate-800 mb-1">
+                                    {fullPlantLabel(c.pair[0])}
+                                    {c.pair[1] !== "—" && <> ↔ {fullPlantLabel(c.pair[1])}</>}
                                 </p>
                                 <p className="text-[11px] text-slate-500 leading-relaxed">{c.note}</p>
                             </div>

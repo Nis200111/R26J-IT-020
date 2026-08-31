@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function GatewaySection() {
   return (
-    <Link href="#" className="block outline-none h-full">
+    <Link href="https://plant-woad.vercel.app/" target="_blank" rel="noopener noreferrer" className="block outline-none h-full">
       <section
         tabIndex={0}
         className="group relative cursor-pointer rounded-2xl border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-full flex flex-col"

@@ -101,7 +101,7 @@ export default function Member2Page() {
   return (
     <div className="min-h-screen bg-[#faf9f6]">
       <PageHeader
-        eyebrow="Member 2 · Natural Language Understanding"
+        eyebrow="MEMBER 2 · HERB KNOWLEDGE ASSISTANT (RAG & NLU)"
         title="Herb Knowledge Assistant"
         accent="RAG + NLU"
         description="Ask about Sri Lankan medicinal herbs. Answers are retrieved from a verified knowledge base of 1,550 herb records, with intent classification and a safety check before any personal advice."
