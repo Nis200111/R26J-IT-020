@@ -31,6 +31,7 @@ from sentence_transformers import SentenceTransformer
 from health_context_checker import (
     requires_health_context,
     get_followup_questions,
+    infer_context_from_query,
     build_health_context,
 )
 
@@ -194,6 +195,10 @@ class HerbRAGPipeline:
 
     def followup_questions(self, query: str, intent: str) -> list:
         return get_followup_questions(query, intent)
+
+    def known_context(self, query: str) -> dict:
+        """The health-context fields the query already stated, if any."""
+        return infer_context_from_query(query)
 
     # ----- 3. Retrieval ----------------------------------------------------
     def retrieve(self, query: str, k: int = 8) -> list:
@@ -710,6 +715,10 @@ class HerbRAGPipeline:
                 "intent": intent,
                 "corrections": corrections,
                 "followup_questions": self.followup_questions(query, intent),
+                # The questions we skipped were skipped because the query
+                # already answered them. Hand those answers back so the caller
+                # can carry them into the context instead of losing them.
+                "known_context": self.known_context(query),
             }
 
         # Hybrid retrieval: semantic (FAISS) + lexical (exact herb-name lookup),
