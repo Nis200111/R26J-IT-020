@@ -11,6 +11,9 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000
  * a call in api.js, and add a result card in results/.
  *
  * `input` describes what the composer should accept: "text", "image" or "none".
+ *
+ * `external: true` means `href` points at a separately deployed app rather than
+ * a route in this project, so it opens in a new tab.
  */
 export const MODELS = [
   {
@@ -51,13 +54,14 @@ export const MODELS = [
   },
   {
     id: "member4",
-    name: "System Gateway",
+    name: "Medical Plant Climate Forecasting",
     subtitle: "Infrastructure",
     input: "none",
     icon: Server,
     endpoint: "/api/member4/predict",
-    href: "/member4",
-    blurb: "Centralised gateway for API traffic and service health monitoring.",
+    href: "https://plant-woad.vercel.app/",
+    external: true,
+    blurb: "Predicted habitat suitability for medicinal plants across Sri Lanka from forecasted temperature and rainfall, 2026–2030.",
     placeholder: "This module takes no input",
     enabled: false,
   },
@@ -70,20 +74,30 @@ export const getModel = (id) => MODELS.find((m) => m.id === id) || MODELS[0];
 /**
  * Health-context options.
  *
- * These MUST stay exactly in sync with the categories the contraindication risk
- * classifier was trained on (see notebook 04). Free text would ask the model to
- * predict on a category it has never seen, so these are dropdowns only.
+ * The listed values MUST stay exactly in sync with the categories the
+ * contraindication risk classifier was trained on (see notebook 04).
+ *
+ * OTHER is the escape hatch for everything the classifier was never trained on
+ * (asthma, thyroid disease, cancer, ...). Choosing it reveals a free-text box,
+ * and whatever the user types is sent as-is. The backend recognises a value it
+ * has no category for, refuses to guess, and returns "Caution" with a warning
+ * instead — which is far safer than the alternative the user had before, which
+ * was to leave "none" selected and be told the herb is Safe for a condition
+ * they never got to mention.
  *
  * Duplicated from src/app/member2/page.js on purpose — they are unexported
  * locals there, and extracting them would mean editing a working page.
  */
+export const OTHER = "other";
+
 export const AGE_GROUPS = ["child", "adult", "elderly"];
 export const CONDITIONS = [
   "none", "pregnancy", "breastfeeding", "diabetes",
-  "hypertension", "kidney disease", "liver disease", "heart disease",
+  "hypertension", "kidney disease", "liver disease", "heart disease", OTHER,
 ];
 export const MEDICATIONS = [
   "none", "antidiabetic", "antihypertensive", "anticoagulant", "antibiotics",
+  OTHER,
 ];
 export const DOSAGE_FORMS = ["herbal tea", "powder", "capsule", "decoction"];
 
@@ -92,7 +106,28 @@ export const DEFAULT_HEALTH_FORM = {
   patient_condition: "none",
   medication_context: "none",
   dosage_form: "powder",
+  // Free text, used only while the matching dropdown is set to OTHER.
+  patient_condition_other: "",
+  medication_context_other: "",
 };
+
+/**
+ * Turn the questionnaire state into the 4 fields the API expects, replacing an
+ * "other" selection with what the user actually typed. A blank box still sends
+ * "other", which the backend also treats as an unknown category rather than
+ * silently downgrading it to "none".
+ */
+export function toHealthContext(form) {
+  const pick = (value, typed) =>
+    value === OTHER ? (typed || "").trim().toLowerCase() || OTHER : value;
+
+  return {
+    age_group: form.age_group,
+    patient_condition: pick(form.patient_condition, form.patient_condition_other),
+    medication_context: pick(form.medication_context, form.medication_context_other),
+    dosage_form: form.dosage_form,
+  };
+}
 
 /** Dark-theme ports of the risk badge styles used on the member2 page. */
 export const RISK_STYLES = {

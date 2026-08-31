@@ -1,8 +1,10 @@
-import Link from "next/link";
+// The forecasting model ships as its own Vercel deployment rather than a route
+// in this app, so this card is a plain anchor rather than a next/link route.
+const FORECAST_APP_URL = "https://plant-woad.vercel.app/";
 
 export default function GatewaySection() {
   return (
-    <Link href="#" className="block outline-none h-full">
+    <a href={FORECAST_APP_URL} className="block outline-none h-full">
       <section
         tabIndex={0}
         className="group relative cursor-pointer rounded-2xl border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-full flex flex-col"
@@ -15,12 +17,12 @@ export default function GatewaySection() {
               </svg>
             </div>
             <h2 className="text-xl font-bold tracking-tight text-zinc-800 group-hover:text-emerald-800 transition-colors duration-300">
-              System Gateway
+              Medical Plant Climate Forecasting
             </h2>
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-500 group-hover:text-zinc-600 transition-colors duration-300">
-            Centralized gateway managing API traffic, system health monitoring, and secure access to the heritage AI microservices.
+            Explore predicted medicinal plant habitat suitability across Sri Lanka based on forecasted temperature and precipitation conditions for 2026–2030.
           </p>
 
           <div className="space-y-3 pt-2">
@@ -28,24 +30,24 @@ export default function GatewaySection() {
               <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">API TRAFFIC MANAGEMENT</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">TEMPERATURE &amp; RAINFALL FORECASTS</span>
             </div>
             <div className="flex items-center gap-3">
               <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">REAL-TIME MONITORING</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">HABITAT SUITABILITY MAPPING</span>
             </div>
           </div>
 
           <div className="mt-auto pt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-8px] group-hover:translate-x-0">
-            VIEW SYSTEM HEALTH
+            OPEN FORECAST APP
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </div>
         </div>
       </section>
-    </Link>
+    </a>
   );
 }
