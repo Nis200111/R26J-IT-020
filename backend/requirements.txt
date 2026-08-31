@@ -3,14 +3,14 @@ uvicorn[standard]
 python-multipart
 pillow
 numpy
-tensorflow
 sqlalchemy
 passlib
 bcrypt==4.0.1
 python-jose[cryptography]
 pydantic[email]
-# Member 3 - leaf disease CNN. The .keras file runs on any Keras 3 backend.
-# TensorFlow ships no wheel for Python 3.14+, so torch is the backend there.
+# Members 1 & 3 - plant / leaf-disease CNNs. Both .keras files are plain Keras 3
+# archives and run on any backend. TensorFlow ships no wheel for Python 3.14+,
+# so torch is the backend there.
 keras
 tensorflow; python_version < "3.14"
 torch; python_version >= "3.14"
