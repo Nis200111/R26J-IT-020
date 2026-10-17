@@ -1,0 +1,22 @@
+{
+  "status": "experimental_candidate",
+  "model_sha256": "b8d094ded13a920a7e33b3bc2b4d3125153f6135d8afb3bfc8dd3b58bef0b85d",
+  "source_checkpoint": "/content/drive/MyDrive/bio-heritage-ai/gatekeeper/results/v2/additional_20261016T130329_317262Z/training_20261016T134345_708470Z/adaptation_best.keras",
+  "threshold": 0.5,
+  "decision_rule": "Accept if valid_score >= threshold",
+  "image_size": [
+    224,
+    224
+  ],
+  "orientation": "PIL.ImageOps.exif_transpose",
+  "color_mode": "RGB",
+  "resize": "PIL bilinear",
+  "input_pixel_range": [
+    0,
+    255
+  ],
+  "normalization": "Embedded; do not normalize again",
+  "operating_targets_met": false,
+  "source_independence_verified": false,
+  "split_sha256": "2f98af09953d2c7d213f4f8ee2ac38882d3a8f0c49ef10e9a3efb4bed43ce8fc"
+}
