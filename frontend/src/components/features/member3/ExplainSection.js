@@ -1,53 +1,71 @@
 import Link from "next/link";
-import { Leaf } from "lucide-react";
+import { Leaf, ArrowRight, ShieldCheck, Microscope, Sparkles } from "lucide-react";
 
 export default function ExplainSection() {
   return (
     <Link href="/member3" className="block outline-none h-full">
       <section
         tabIndex={0}
-        className="group relative cursor-pointer rounded-2xl border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-300 hover:bg-emerald-50/40 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-full flex flex-col"
+        className="group relative cursor-pointer rounded-3xl border border-zinc-200/90 bg-white p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-500/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-full flex flex-col justify-between"
       >
-        <div className="flex flex-col gap-5 text-left h-full">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-zinc-100 bg-zinc-50 text-emerald-600 group-hover:bg-emerald-100/50 group-hover:text-emerald-700 transition-all duration-300">
-              <Leaf className="h-6 w-6" />
+        <div className="flex flex-col gap-5 text-left">
+          {/* Header & Icon */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white group-hover:scale-105 transition-all duration-300 shadow-xs">
+                <Leaf className="h-7 w-7" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                  Research Component 03
+                </span>
+                <h2 className="text-xl font-bold tracking-tight text-zinc-900 group-hover:text-emerald-950 transition-colors duration-300">
+                  Medicinal Leaf Health Detection
+                </h2>
+              </div>
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-zinc-800 group-hover:text-emerald-800 transition-colors duration-300">
-              Medicinal Leaf Health Detection
-            </h2>
           </div>
 
-          <p className="text-sm leading-relaxed text-zinc-500 group-hover:text-zinc-600 transition-colors duration-300">
-            AI-powered leaf health classification using EfficientNetB4 deep learning — determines whether a medicinal leaf is healthy or diseased to verify its suitability for Ayurvedic medicine production.
+          <p className="text-sm leading-relaxed text-zinc-600 group-hover:text-zinc-700 transition-colors duration-300">
+            AI-powered leaf health classification using EfficientNetB4 deep neural networks — accurately determines whether a medicinal herb leaf is healthy or diseased, verifying its suitability for Ayurvedic drug formulation.
           </p>
 
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-3">
-              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">EFFICIENTNETB4 CLASSIFIER</span>
+          {/* Capability checklist */}
+          <div className="space-y-2.5 pt-1">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <Microscope className="h-3 w-3" />
+              </div>
+              <span className="text-xs font-bold text-zinc-700">
+                EfficientNetB4 Deep Classifier
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">HEALTHY vs DISEASED DETECTION</span>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <ShieldCheck className="h-3 w-3" />
+              </div>
+              <span className="text-xs font-bold text-zinc-700">
+                Healthy vs. Diseased Screening
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-500 transition-colors duration-300">AYURVEDIC QUALITY VERIFICATION</span>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <Sparkles className="h-3 w-3" />
+              </div>
+              <span className="text-xs font-bold text-zinc-700">
+                Ayurvedic Remedies & Quality Verification
+              </span>
             </div>
           </div>
+        </div>
 
-          <div className="mt-auto pt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-8px] group-hover:translate-x-0">
-            ANALYZE A LEAF
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+        {/* Action Link Footer */}
+        <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between text-xs font-bold text-emerald-700 group-hover:text-emerald-800 transition-all">
+          <span className="uppercase tracking-wider">Analyze Leaf Specimen</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
+            <ArrowRight className="h-4 w-4" />
           </div>
         </div>
       </section>
