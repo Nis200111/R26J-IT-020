@@ -1,4 +1,6 @@
 import io
+import hashlib
+import json
 import os
 
 import importlib.util
@@ -16,7 +18,7 @@ if not os.environ.get("KERAS_BACKEND"):
 
 import numpy as np
 from fastapi import APIRouter, UploadFile, File
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 router = APIRouter()
 
@@ -36,7 +38,7 @@ try:
         from tensorflow import keras as _keras
     keras = _keras
     if os.path.exists(MODEL_PATH):
-        model = keras.models.load_model(MODEL_PATH)
+        model = keras.models.load_model(MODEL_PATH, compile=False)
         print(f"[Member3] Model loaded successfully from {MODEL_PATH} (backend: {keras.backend.backend()})")
     else:
         model_load_error = f"Model file not found at {MODEL_PATH}"
@@ -44,6 +46,68 @@ try:
 except Exception as e:
     model_load_error = str(e)
     print(f"[Member3] Failed to load model: {model_load_error}")
+
+
+GATEKEEPER_DIR = os.path.dirname(os.path.abspath(MODEL_PATH))
+GATEKEEPER_PATH = os.path.join(GATEKEEPER_DIR, "gatekeeper_candidate.keras")
+GATEKEEPER_CONFIG_PATH = os.path.join(GATEKEEPER_DIR, "inference_config.json")
+gatekeeper_model = None
+gatekeeper_threshold = None
+gatekeeper_load_error = None
+
+try:
+    if keras is None:
+        raise RuntimeError("Keras is unavailable.")
+    with open(GATEKEEPER_CONFIG_PATH, encoding="utf-8-sig") as config_file:
+        gatekeeper_config = json.load(config_file)
+    threshold = float(gatekeeper_config["threshold"])
+    if not np.isfinite(threshold) or not 0 < threshold < 1:
+        raise ValueError("Invalid Gatekeeper threshold.")
+    if gatekeeper_config["image_size"] != [224, 224]:
+        raise ValueError("Unexpected Gatekeeper image size.")
+    # The original Colab export has no labels field. This model's sigmoid
+    # output is the Valid score (Invalid=0, Valid=1), as used during training.
+    if gatekeeper_config.get("labels", {"Invalid": 0, "Valid": 1}) != {"Invalid": 0, "Valid": 1}:
+        raise ValueError("Unexpected Gatekeeper label mapping.")
+    expected_preprocessing = {
+        "orientation": "PIL.ImageOps.exif_transpose",
+        "color_mode": "RGB",
+        "resize": "PIL bilinear",
+        "input_pixel_range": [0, 255],
+        "normalization": "Embedded; do not normalize again",
+        "decision_rule": "Accept if valid_score >= threshold",
+    }
+    for setting, expected in expected_preprocessing.items():
+        if gatekeeper_config.get(setting) != expected:
+            raise ValueError(f"Unsupported Gatekeeper setting: {setting}.")
+    with open(GATEKEEPER_PATH, "rb") as model_file:
+        actual_sha256 = hashlib.file_digest(model_file, "sha256").hexdigest()
+    if actual_sha256 != gatekeeper_config["model_sha256"]:
+        raise ValueError("Gatekeeper model does not match its inference settings.")
+    candidate = keras.models.load_model(GATEKEEPER_PATH, compile=False)
+    if tuple(candidate.input_shape[1:]) != (224, 224, 3):
+        raise ValueError("Unexpected Gatekeeper input shape.")
+    if tuple(candidate.output_shape[1:]) != (1,):
+        raise ValueError("Unexpected Gatekeeper output shape.")
+    gatekeeper_threshold = threshold
+    gatekeeper_model = candidate
+    print(f"[Member3] Gatekeeper loaded (threshold: {threshold}).")
+except Exception as e:
+    gatekeeper_load_error = str(e)
+    print(f"[Member3] Failed to load Gatekeeper: {gatekeeper_load_error}")
+
+
+def get_gatekeeper_score(image: Image.Image) -> float:
+    """Match Colab inference; normalization is embedded in the model."""
+    resized = image.resize((224, 224), Image.Resampling.BILINEAR)
+    batch = np.expand_dims(np.asarray(resized, dtype=np.float32), axis=0)
+    scores = np.asarray(gatekeeper_model.predict(batch, verbose=0)).reshape(-1)
+    if scores.size != 1:
+        raise ValueError("Unexpected Gatekeeper prediction shape.")
+    score = float(scores[0])
+    if not np.isfinite(score) or not 0 <= score <= 1:
+        raise ValueError("Invalid Gatekeeper prediction.")
+    return score
 
 
 def preprocess_image(image: Image.Image) -> np.ndarray:
@@ -104,13 +168,43 @@ def get_ayurvedic_grade(predicted_class: str, confidence: float) -> dict:
 
 @router.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    if gatekeeper_model is None:
+        return {
+            "error": True,
+            "code": "GATEKEEPER_UNAVAILABLE",
+            "message": "Image validation is unavailable. Please check the Member 3 backend logs.",
+        }
     if model is None:
         error_msg = model_load_error or "Model not loaded."
         return {"error": True, "message": f"Model unavailable: {error_msg}"}
 
     try:
         contents = await file.read()
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        with Image.open(io.BytesIO(contents)) as source:
+            if getattr(source, "n_frames", 1) != 1:
+                raise ValueError("Please upload a single still image.")
+            # Transparent backgrounds were not included in Gatekeeper training.
+            if "A" in source.getbands() or "transparency" in source.info:
+                if source.convert("RGBA").getchannel("A").getextrema()[0] < 255:
+                    raise ValueError("Please upload a photo with an opaque background.")
+            image = ImageOps.exif_transpose(source).convert("RGB")
+
+        valid_score = get_gatekeeper_score(image)
+        gatekeeper_result = {
+            "accepted": valid_score >= gatekeeper_threshold,
+            "validScore": round(valid_score, 6),
+            "threshold": gatekeeper_threshold,
+        }
+        if not gatekeeper_result["accepted"]:
+            return {
+                "error": True,
+                "code": "UNSUPPORTED_OR_UNCERTAIN_IMAGE",
+                "message": (
+                    "This image could not be confidently accepted as Aloe vera or Betel. "
+                    "Please upload a clear photo of a supported leaf."
+                ),
+                "gatekeeper": gatekeeper_result,
+            }
 
         img_array = preprocess_image(image)
         prediction = model.predict(img_array, verbose=0)
@@ -133,6 +227,7 @@ async def predict(file: UploadFile = File(...)):
 
         return {
             "error": False,
+            "gatekeeper": gatekeeper_result,
             "label": predicted_label,
             "confidence": confidence_pct,
             "suitability": suitability,
@@ -145,5 +240,7 @@ async def predict(file: UploadFile = File(...)):
             # Novelty: Ayurvedic Quality Grade
             "qualityGrade": grade_info,
         }
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as e:
+        return {"error": True, "code": "INVALID_IMAGE_OR_PREDICTION", "message": f"Unable to analyze image: {e}"}
     except Exception as e:
         return {"error": True, "message": f"Prediction failed: {str(e)}"}
