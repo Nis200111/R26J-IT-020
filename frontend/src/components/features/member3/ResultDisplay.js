@@ -46,9 +46,8 @@ function AnimatedConfidence({ value, isHealthy }) {
 
   return (
     <span
-      className={`text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight ${
-        isHealthy ? "text-emerald-600" : "text-rose-600"
-      }`}
+      className={`text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight ${isHealthy ? "text-emerald-600" : "text-rose-600"
+        }`}
     >
       {display.toFixed(1)}
       <span className="text-2xl sm:text-3xl font-semibold text-zinc-400 ml-1">%</span>
@@ -216,27 +215,24 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
       {/* 1. HERO VERDICT CARD */}
       {/* ──────────────────────────────────────────── */}
       <div
-        className={`relative overflow-hidden rounded-3xl border-2 p-6 sm:p-8 transition-all shadow-sm ${
-          isHealthy
-            ? "border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50/40"
-            : "border-rose-300 bg-gradient-to-br from-rose-50 via-white to-amber-50/40"
-        }`}
+        className={`relative overflow-hidden rounded-3xl border-2 p-6 sm:p-8 transition-all shadow-sm ${isHealthy
+          ? "border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50/40"
+          : "border-rose-300 bg-gradient-to-br from-rose-50 via-white to-amber-50/40"
+          }`}
       >
         {/* Decorative blur glow */}
         <div
-          className={`absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl opacity-25 pointer-events-none ${
-            isHealthy ? "bg-emerald-500" : "bg-rose-500"
-          }`}
+          className={`absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl opacity-25 pointer-events-none ${isHealthy ? "bg-emerald-500" : "bg-rose-500"
+            }`}
         />
 
         <div className="relative flex flex-col sm:flex-row items-start gap-5 sm:gap-6">
           {/* Main Status Icon */}
           <div
-            className={`flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-2xl shadow-md ring-4 ${
-              isHealthy
-                ? "bg-emerald-500 text-white ring-emerald-100"
-                : "bg-rose-500 text-white ring-rose-100"
-            }`}
+            className={`flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-2xl shadow-md ring-4 ${isHealthy
+              ? "bg-emerald-500 text-white ring-emerald-100"
+              : "bg-rose-500 text-white ring-rose-100"
+              }`}
           >
             {isHealthy ? (
               <CheckCircle2 className="h-9 w-9 sm:h-11 sm:w-11" />
@@ -248,11 +244,10 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider shadow-xs ${
-                  isHealthy
-                    ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                    : "bg-rose-100 text-rose-800 border border-rose-300"
-                }`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider shadow-xs ${isHealthy
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-rose-100 text-rose-800 border border-rose-300"
+                  }`}
               >
                 {isHealthy ? (
                   <Sparkles className="h-3.5 w-3.5" />
@@ -275,28 +270,28 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             </div>
 
             <h2
-              className={`font-serif text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${
-                isHealthy ? "text-emerald-950" : "text-rose-950"
-              }`}
+              className={`font-serif text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${isHealthy ? "text-emerald-950" : "text-rose-950"
+                }`}
             >
               {isHealthy
-                ? "Leaf Approved for Ayurvedic Production"
-                : `${diseaseLabel} Detected — Specimen Rejected`}
+                ? "Healthy Appearance Predicted (Visual Screening)"
+                : `${diseaseLabel} Detected — Expert Review Recommended`}
             </h2>
 
             <p
-              className={`text-base sm:text-lg leading-relaxed font-normal ${
-                isHealthy ? "text-emerald-800" : "text-rose-800"
-              }`}
+              className={`text-base sm:text-lg leading-relaxed font-normal ${isHealthy ? "text-emerald-800" : "text-rose-800"
+                }`}
             >
-              {result.suitability}
+              {result.suitability || (isHealthy
+                ? "Classified as healthy based on visible image features. Visual screening completed; medicinal suitability is not verified."
+                : `Visual disease indicators of ${diseaseLabel} detected. Disease Predicted — Expert Review Recommended.`)}
             </p>
           </div>
         </div>
       </div>
 
       {/* ──────────────────────────────────────────── */}
-      {/* 2. AYURVEDIC MEDICINAL SUITABILITY (AMS) GRADE */}
+      {/* 2. PROPOSED VISUAL LEAF-CONDITION GRADE */}
       {/* ──────────────────────────────────────────── */}
       {grade && gradeStyle && (
         <div
@@ -321,18 +316,27 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Award className={`h-4 w-4 ${gradeStyle.text}`} />
                 <span className={`text-xs font-bold uppercase tracking-wider ${gradeStyle.text}`}>
-                  Ayurvedic Medicinal Suitability (AMS) Standard
+                  Proposed Visual Leaf-Condition Grade
                 </span>
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${gradeStyle.badge} text-white`}
                 >
-                  {grade.status}
+                  {grade.status === "Approved" || grade.status === "Healthy Appearance Predicted"
+                    ? "Healthy Appearance Predicted"
+                    : grade.status === "Strictly Rejected"
+                      ? "Disease Predicted — Expert Review Recommended"
+                      : grade.status}
                 </span>
               </div>
 
               <h3 className={`text-xl sm:text-2xl font-bold ${gradeStyle.text}`}>
-                Grade {grade.grade} — {grade.title}
+                Grade {grade.grade} — {grade.title === "Premium Medicinal Quality" ? "High-Confidence Healthy Prediction" : grade.title === "Acceptable Medicinal Quality" ? "Moderate-Confidence Healthy Prediction" : grade.title.startsWith("Rejected") ? `Disease Predicted — ${diseaseLabel}` : grade.title}
               </h3>
+
+              {/* Explicit Scope Sub-Clarification */}
+              <p className="text-xs sm:text-sm font-semibold text-zinc-700 bg-white/70 rounded-xl p-2.5 border border-zinc-200/60">
+                Based on the predicted leaf condition and model confidence. This grade does not certify medicinal quality or safety.
+              </p>
 
               <p className="text-sm sm:text-base text-zinc-700 leading-relaxed font-normal">
                 {grade.description}
@@ -340,11 +344,41 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             </div>
           </div>
 
+          {/* Scientific Threshold & Confidence Banding Clarification */}
+          <div className="mt-5 rounded-2xl bg-white/85 border border-zinc-200/90 p-4 sm:p-5 text-xs sm:text-sm text-zinc-600 space-y-2.5">
+            <div className="flex items-center gap-2 font-bold text-zinc-900 text-xs sm:text-sm">
+              <Info className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span>Heuristic Confidence Band Clarification (85% &amp; 65% Thresholds):</span>
+            </div>
+            <p className="leading-relaxed font-medium text-zinc-800">
+              &ldquo;The 85% and 65% thresholds are heuristic cut-offs used to separate healthy predictions into confidence bands. They are not clinically or pharmacologically validated limits.&rdquo;
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[12px]">
+              <div className="bg-emerald-50/80 rounded-xl p-2.5 border border-emerald-200/70">
+                <span className="font-bold text-emerald-900">Grade A (&gt;85%):</span>
+                <span className="ml-1 text-zinc-700">ඉහළ confidence සහිත Healthy prediction.</span>
+              </div>
+              <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/70">
+                <span className="font-bold text-amber-900">Grade B (65%–85%):</span>
+                <span className="ml-1 text-zinc-700">මධ්‍යම confidence සහිත Healthy prediction.</span>
+              </div>
+              <div className="bg-orange-50/80 rounded-xl p-2.5 border border-orange-200/70">
+                <span className="font-bold text-orange-900">Grade C (≤65%):</span>
+                <span className="ml-1 text-zinc-700">අවිනිශ්චිත Healthy prediction; manual review අවශ්‍යයි.</span>
+              </div>
+              <div className="bg-rose-50/80 rounded-xl p-2.5 border border-rose-200/70">
+                <span className="font-bold text-rose-900">Grade D (Disease):</span>
+                <span className="ml-1 text-zinc-700">Disease-predicted leaf; expert inspection අවශ්‍යයි.</span>
+              </div>
+            </div>
+
+          </div>
+
           {/* Grade Scale Bar */}
-          <div className="mt-6 pt-5 border-t border-zinc-300/60">
+          <div className="mt-5 pt-4 border-t border-zinc-300/60">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                Medicinal Quality Tier Comparison
+                Confidence Band Classification
               </span>
               <span className="text-xs font-semibold text-zinc-500">
                 Current: <strong className="text-zinc-800">Grade {grade.grade}</strong>
@@ -353,25 +387,23 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
 
             <div className="grid grid-cols-4 gap-2">
               {[
-                { g: "A", label: "Grade A", sub: "Premium", color: "bg-emerald-500", ring: "ring-emerald-400" },
-                { g: "B", label: "Grade B", sub: "Acceptable", color: "bg-amber-500", ring: "ring-amber-400" },
+                { g: "A", label: "Grade A", sub: "High Conf", color: "bg-emerald-500", ring: "ring-emerald-400" },
+                { g: "B", label: "Grade B", sub: "Mod Conf", color: "bg-amber-500", ring: "ring-amber-400" },
                 { g: "C", label: "Grade C", sub: "Uncertain", color: "bg-orange-500", ring: "ring-orange-400" },
-                { g: "D", label: "Grade D", sub: "Rejected", color: "bg-rose-500", ring: "ring-rose-400" },
+                { g: "D", label: "Grade D", sub: "Disease Pred", color: "bg-rose-500", ring: "ring-rose-400" },
               ].map((item) => {
                 const isActive = item.g === grade.grade;
                 return (
                   <div
                     key={item.g}
-                    className={`rounded-xl p-2.5 text-center transition-all ${
-                      isActive
-                        ? "bg-white shadow-md ring-2 " + item.ring
-                        : "bg-white/50 opacity-70"
-                    }`}
+                    className={`rounded-xl p-2.5 text-center transition-all ${isActive
+                      ? "bg-white shadow-md ring-2 " + item.ring
+                      : "bg-white/50 opacity-70"
+                      }`}
                   >
                     <div
-                      className={`h-2.5 w-full rounded-full mb-1.5 ${
-                        isActive ? item.color : "bg-zinc-200"
-                      }`}
+                      className={`h-2.5 w-full rounded-full mb-1.5 ${isActive ? item.color : "bg-zinc-200"
+                        }`}
                     />
                     <p className={`text-xs font-bold ${isActive ? "text-zinc-900" : "text-zinc-500"}`}>
                       {item.label}
@@ -386,6 +418,7 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
           </div>
         </div>
       )}
+
 
       {/* ──────────────────────────────────────────── */}
       {/* 3. DISEASE INFO CARD (If Diseased) */}
@@ -469,9 +502,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
               />
               <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100 p-0.5 border border-zinc-200">
                 <div
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                    isHealthy ? "bg-emerald-500" : "bg-rose-500"
-                  }`}
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isHealthy ? "bg-emerald-500" : "bg-rose-500"
+                    }`}
                   style={{ width: `${result.confidence}%` }}
                 />
               </div>
@@ -483,18 +515,16 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             <div className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
               <div className="flex items-center gap-2.5">
                 <Leaf
-                  className={`h-5 w-5 shrink-0 ${
-                    isHealthy ? "text-emerald-600" : "text-rose-500"
-                  }`}
+                  className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-600" : "text-rose-500"
+                    }`}
                 />
                 <span className="text-xs font-semibold text-zinc-600">
                   Detected Condition
                 </span>
               </div>
               <span
-                className={`text-sm font-bold ${
-                  isHealthy ? "text-emerald-700" : "text-rose-700"
-                }`}
+                className={`text-sm font-bold ${isHealthy ? "text-emerald-700" : "text-rose-700"
+                  }`}
               >
                 {isHealthy ? "Healthy" : diseaseLabel}
               </span>
@@ -503,20 +533,18 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
             <div className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
               <div className="flex items-center gap-2.5">
                 <Shield
-                  className={`h-5 w-5 shrink-0 ${
-                    isHealthy ? "text-emerald-600" : "text-rose-500"
-                  }`}
+                  className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-600" : "text-rose-500"
+                    }`}
                 />
                 <span className="text-xs font-semibold text-zinc-600">
-                  Ayurvedic Suitability
+                  Visual Screening Assessment
                 </span>
               </div>
               <span
-                className={`text-xs sm:text-sm font-bold ${
-                  isHealthy ? "text-emerald-700" : "text-rose-700"
-                }`}
+                className={`text-xs sm:text-sm font-bold ${isHealthy ? "text-emerald-700" : "text-rose-700"
+                  }`}
               >
-                {isHealthy ? "Approved for Production" : "Rejected from Production"}
+                {isHealthy ? "Healthy Appearance Predicted" : "Disease Predicted — Review Advised"}
               </span>
             </div>
 
@@ -561,9 +589,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                   <div key={className} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-sm font-semibold flex items-center gap-2 ${
-                          isTop ? "text-zinc-900 font-bold" : "text-zinc-600"
-                        }`}
+                        className={`text-sm font-semibold flex items-center gap-2 ${isTop ? "text-zinc-900 font-bold" : "text-zinc-600"
+                          }`}
                       >
                         {displayName}
                         {isTop && (
@@ -573,20 +600,18 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                         )}
                       </span>
                       <span
-                        className={`text-sm font-bold tabular-nums ${
-                          isTop ? "text-zinc-900" : "text-zinc-400"
-                        }`}
+                        className={`text-sm font-bold tabular-nums ${isTop ? "text-zinc-900" : "text-zinc-400"
+                          }`}
                       >
                         {prob.toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          isTop
-                            ? PROB_BAR_COLORS[className] || "bg-emerald-500"
-                            : "bg-zinc-300"
-                        }`}
+                        className={`h-full rounded-full transition-all duration-700 ${isTop
+                          ? PROB_BAR_COLORS[className] || "bg-emerald-500"
+                          : "bg-zinc-300"
+                          }`}
                         style={{ width: `${prob}%` }}
                       />
                     </div>
@@ -633,7 +658,7 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
           <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-800 bg-white border border-emerald-300 rounded-full px-4 py-2 shadow-xs shrink-0">
             {isRemediesOpen ? (
               <>
-                <span>සඟවන්න (Hide)</span>
+                <span> (Hide)</span>
                 <ChevronUp className="h-4 w-4" />
               </>
             ) : (
@@ -753,19 +778,17 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
       </div>
 
       {/* ──────────────────────────────────────────── */}
-      {/* 7. QUALITY CERTIFICATE / SUITABILITY SUMMARY BANNER */}
+      {/* 7. VISUAL SCREENING SUMMARY BANNER */}
       {/* ──────────────────────────────────────────── */}
       <div
-        className={`flex items-start sm:items-center gap-4 rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${
-          isHealthy
-            ? "border-emerald-300 bg-emerald-50/90"
-            : "border-rose-300 bg-rose-50/90"
-        }`}
+        className={`flex items-start sm:items-center gap-4 rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${isHealthy
+          ? "border-emerald-300 bg-emerald-50/90"
+          : "border-rose-300 bg-rose-50/90"
+          }`}
       >
         <div
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${
-            isHealthy ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-          }`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${isHealthy ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+            }`}
         >
           {isHealthy ? (
             <CheckCircle2 className="h-7 w-7" />
@@ -775,22 +798,20 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
         </div>
         <div className="flex-1">
           <p
-            className={`text-base sm:text-lg font-bold ${
-              isHealthy ? "text-emerald-950" : "text-rose-950"
-            }`}
+            className={`text-base sm:text-lg font-bold ${isHealthy ? "text-emerald-950" : "text-rose-950"
+              }`}
           >
             {isHealthy
-              ? "✅ Quality Verified — Safe for Ayurvedic Medicine Production"
-              : "⚠️ Quality Warning — Do Not Use for Ayurvedic Medicine Production"}
+              ? "ℹ️ Visual Screening Completed — Medicinal Suitability Not Certified"
+              : "⚠️ Disease Predicted — Expert Inspection Recommended"}
           </p>
           <p
-            className={`text-sm sm:text-base mt-1 leading-relaxed ${
-              isHealthy ? "text-emerald-800" : "text-rose-800"
-            }`}
+            className={`text-sm sm:text-base mt-1 leading-relaxed ${isHealthy ? "text-emerald-800" : "text-rose-800"
+              }`}
           >
             {isHealthy
-              ? "This leaf has passed the AI health screening and is certified for Ayurvedic medicinal extraction and formulations."
-              : `${diseaseLabel} detected. This leaf must be discarded or treated to maintain medicinal product purity and safety.`}
+              ? "This leaf was classified as healthy based on visible image features. Computer vision evaluates superficial features only and does not verify biochemical active compounds, chemical residues, or pharmacological efficacy."
+              : `Visual indicators of ${diseaseLabel} were predicted from surface image features. Physical inspection and expert review are recommended before discarding or handling.`}
           </p>
         </div>
       </div>
