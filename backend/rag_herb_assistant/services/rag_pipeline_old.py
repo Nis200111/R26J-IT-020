@@ -1,0 +1,802 @@
+"""
+RAG Pipeline - the core "brain" of the assistant
+------------------------------------------------
+Bio-Heritage AI: RAG-Based Sri Lankan Herb Knowledge Assistant
+
+This module connects every component into one pipeline:
+
+  user query
+     -> 1. SVM intent classification
+     -> 2. health-context requirement check (+ follow-up questions)
+     -> 3. FAISS semantic retrieval
+     -> 4. herb relevance re-ranking
+     -> 5. contraindication risk classification (Random Forest)
+     -> 6. grounded answer generation with Llama 3.2 via Ollama
+
+It loads all the artifacts produced by notebooks 01-04. The Streamlit app
+(Day 5) imports this module, so all the logic lives in one place.
+"""
+
+import os
+import re
+import json
+import pickle
+import difflib
+
+import numpy as np
+import pandas as pd
+import faiss
+from sentence_transformers import SentenceTransformer
+
+from health_context_checker import (
+    requires_health_context,
+    get_followup_questions,
+    infer_context_from_query,
+    build_health_context,
+)
+
+# ---------------------------------------------------------------------------
+# Paths (resolved relative to this file, so it works from anywhere)
+# ---------------------------------------------------------------------------
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_BASE = os.path.normpath(os.path.join(_HERE, ".."))
+INDEX_PATH = os.path.join(_BASE, "indexes", "sl_herb_faiss.index")
+META_PATH = os.path.join(_BASE, "indexes", "herb_metadata.pkl")
+CSV_PATH = os.path.join(_BASE, "data", "sri_lankan_herb_knowledge_base.csv")
+INTENT_MODEL_PATH = os.path.join(_BASE, "models", "intent_classifier.pkl")
+RISK_MODEL_PATH = os.path.join(_BASE, "models", "herb_risk_random_forest_model.pkl")
+FEAT_ENC_PATH = os.path.join(_BASE, "models", "feature_label_encoders.pkl")
+TARGET_ENC_PATH = os.path.join(_BASE, "models", "target_label_encoder.pkl")
+FEAT_COLS_PATH = os.path.join(_BASE, "models", "feature_columns.pkl")
+
+EMBED_MODEL_NAME = "all-MiniLM-L6-v2"
+OLLAMA_MODEL = "llama3.2"
+# Keep the model resident between questions instead of Ollama's 5-minute default.
+OLLAMA_KEEP_ALIVE = "30m"
+# Upper bound on answer length. Normal answers land well under this; the cap
+# only stops a runaway generation from blocking the request for a minute.
+OLLAMA_MAX_TOKENS = 400
+
+FALLBACK_ANSWER = ("Verified information is not available in the current "
+                   "knowledge base for this question.")
+
+# Words that must never be "corrected" into a herb name.
+_STOPWORDS = {
+    "what", "which", "where", "when", "about", "used", "uses", "using", "safe",
+    "safety", "dose", "doses", "dosage", "take", "taking", "want", "know",
+    "tell", "give", "good", "best", "help", "helps", "with", "from", "this",
+    "that", "there", "they", "have", "has", "does", "doing", "your", "you",
+    "can", "could", "should", "would", "herb", "herbs", "herbal", "plant",
+    "plants", "medicine", "medicinal", "medication", "treatment", "disease",
+    "diseases", "during", "while", "pregnant", "pregnancy", "breastfeeding",
+    "diabetes", "diabetic", "kidney", "liver", "heart", "blood", "pressure",
+    "child", "children", "adult", "elderly", "properties", "property",
+    "contraindication", "contraindications", "side", "effects", "please",
+    "the", "and", "for", "are", "is", "of", "in", "on", "to", "a", "an", "i",
+}
+
+
+class HerbRAGPipeline:
+    def __init__(self):
+        # Embedding model + FAISS index
+        self.embedder = SentenceTransformer(EMBED_MODEL_NAME)
+        self.index = faiss.read_index(INDEX_PATH)
+        with open(META_PATH, "rb") as f:
+            self.metadata = pickle.load(f)
+
+        # The metadata pickle from notebook 01 only kept a subset of columns.
+        # Join the full CSV back on herb_id so every field (description,
+        # compounds, edible parts, ...) is available when answering. The FAISS
+        # vectors are untouched, so no re-embedding is needed.
+        self._enrich_metadata_from_csv()
+
+        # Intent classifier
+        with open(INTENT_MODEL_PATH, "rb") as f:
+            self.intent_model = pickle.load(f)
+
+        # Contraindication risk classifier + encoders
+        with open(RISK_MODEL_PATH, "rb") as f:
+            self.risk_model = pickle.load(f)
+        with open(FEAT_ENC_PATH, "rb") as f:
+            self.feature_encoders = pickle.load(f)
+        with open(TARGET_ENC_PATH, "rb") as f:
+            self.target_encoder = pickle.load(f)
+        with open(FEAT_COLS_PATH, "rb") as f:
+            self.feature_columns = pickle.load(f)
+
+        # Built on the first safety question, then reused (see _explain_risk).
+        self._shap_explainer = None
+
+        # Conditions the knowledge base actually treats, harvested from the
+        # treatment_for column. Used by resolve_reference to tell "that"
+        # meaning a herb from "that" meaning an ailment.
+        self._disease_terms = set()
+        for rec in self.metadata:
+            for term in str(rec.get("treatment_for", "")).split(";"):
+                term = term.strip().lower()
+                if len(term) >= 4:
+                    self._disease_terms.add(term)
+                    # also index the individual words, so "diabetes" matches
+                    # a record whose entry is "diabetes management"
+                    for w in term.split():
+                        if len(w) >= 5:
+                            self._disease_terms.add(w)
+
+        # Herb-name lexicon for spelling correction (Sinhala/English/Latin).
+        # Sinhala herb names have many romanised spellings (Kohomba / Kohoba),
+        # so we fuzzy-match query words against every known name.
+        self._lexicon = {}       # lowercase name -> original name
+        self._name_index = {}    # lowercase name -> [positions in metadata]
+        for pos, rec in enumerate(self.metadata):
+            for key in ("herb_name_sinhala", "herb_name_english", "herb_name_latin"):
+                name = str(rec.get(key, "")).strip()
+                if len(name) >= 4:
+                    self._lexicon.setdefault(name.lower(), name)
+                    self._name_index.setdefault(name.lower(), []).append(pos)
+            for syn in str(rec.get("synonyms", "")).split(";"):
+                syn = syn.strip()
+                if len(syn) >= 4:
+                    self._lexicon.setdefault(syn.lower(), syn)
+                    self._name_index.setdefault(syn.lower(), []).append(pos)
+
+    # ----- 0. Herb-name spelling correction --------------------------------
+    HERB_MATCH_CUTOFF = 0.75  # similarity needed to accept a correction
+
+    def correct_herb_names(self, query: str):
+        """
+        Fuzzy-match query words against the herb lexicon and fix misspellings
+        (e.g. "kohoba" -> "Kohomba"). Returns (corrected_query, corrections)
+        where corrections is a list of (typed_word, corrected_name).
+
+        A word is only corrected when it is not already a known name, is not a
+        common English/medical word, and is similar enough to exactly one herb.
+        """
+        words = re.findall(r"[A-Za-z]+", query)
+        corrections = []
+        corrected = query
+
+        for w in words:
+            wl = w.lower()
+            if len(wl) < 4 or wl in _STOPWORDS or wl in self._lexicon:
+                continue
+            match = difflib.get_close_matches(
+                wl, self._lexicon.keys(), n=1, cutoff=self.HERB_MATCH_CUTOFF
+            )
+            if match:
+                proper = self._lexicon[match[0]]
+                corrections.append((w, proper))
+                corrected = re.sub(rf"\b{re.escape(w)}\b", proper, corrected)
+
+        return corrected, corrections
+
+    def _enrich_metadata_from_csv(self):
+        """Merge any CSV columns missing from the pickled metadata, by herb_id."""
+        if not os.path.exists(CSV_PATH):
+            return
+        df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+        for c in df.select_dtypes(include="object").columns:
+            df[c] = df[c].fillna("").astype(str).str.strip()
+        by_id = {r["herb_id"]: r for _, r in df.iterrows()}
+        for rec in self.metadata:
+            row = by_id.get(rec.get("herb_id"))
+            if row is None:
+                continue
+            for col in df.columns:
+                if not str(rec.get(col, "")).strip():
+                    rec[col] = row[col]
+
+    # ----- 1. Intent -------------------------------------------------------
+    def classify_intent(self, query: str) -> str:
+        return self.intent_model.predict([query])[0]
+
+    # ----- 2. Health context ----------------------------------------------
+    def needs_health_context(self, query: str, intent: str) -> bool:
+        return requires_health_context(query, intent)
+
+    def followup_questions(self, query: str, intent: str) -> list:
+        return get_followup_questions(query, intent)
+
+    def known_context(self, query: str) -> dict:
+        """The health-context fields the query already stated, if any."""
+        return infer_context_from_query(query)
+
+    # ----- 3. Retrieval ----------------------------------------------------
+    def retrieve(self, query: str, k: int = 8) -> list:
+        q_emb = self.embedder.encode(
+            [query], convert_to_numpy=True, normalize_embeddings=True
+        ).astype("float32")
+        scores, idxs = self.index.search(q_emb, k)
+        results = []
+        for score, i in zip(scores[0], idxs[0]):
+            rec = dict(self.metadata[i])
+            rec["semantic_score"] = float(score)
+            results.append(rec)
+        return results
+
+    def lookup_by_name(self, query: str) -> list:
+        """
+        Hybrid (lexical) retrieval: return records for any herb explicitly
+        named in the query.
+
+        Pure semantic search can miss the named herb entirely -- in
+        "Is Kohomba safe during pregnancy?" the words "safe during pregnancy"
+        dominate the embedding and every herb has similar safety text, so the
+        Kohomba record can fall outside the top-k. Looking the name up directly
+        guarantees it reaches the re-ranker.
+        """
+        q_lower = query.lower()
+        q_emb = self.embedder.encode(
+            [query], convert_to_numpy=True, normalize_embeddings=True
+        ).astype("float32")[0]
+
+        hits, seen = [], set()
+        for name, positions in self._name_index.items():
+            if re.search(rf"\b{re.escape(name)}\b", q_lower):
+                for pos in positions:
+                    if pos in seen:
+                        continue
+                    seen.add(pos)
+                    rec = dict(self.metadata[pos])
+                    # true cosine score, so it ranks fairly against FAISS hits
+                    vec = self.index.reconstruct(int(pos))
+                    rec["semantic_score"] = float(np.dot(q_emb, vec))
+                    hits.append(rec)
+        return hits
+
+    # ----- 4. Re-ranking ---------------------------------------------------
+    def rerank(self, query: str, candidates: list, top_n: int = 4) -> list:
+        """
+        Re-order retrieved records by relevance to the query:
+        - a strong boost when the query names this herb exactly, so a named
+          herb always outranks merely similar ones;
+        - a smaller boost for word overlap with uses / properties.
+        """
+        q_lower = query.lower()
+        q_tokens = set(q_lower.split())
+        for c in candidates:
+            names = [str(c.get(k, "")).lower()
+                     for k in ("herb_name_english", "herb_name_sinhala", "herb_name_latin")]
+            name_hit = any(n and n in q_lower for n in names)
+
+            text = " ".join(names + [
+                str(c.get("treatment_for", "")),
+                str(c.get("medical_properties", "")),
+            ]).lower()
+            overlap = sum(1 for t in q_tokens if len(t) > 2 and t in text)
+
+            c["rerank_score"] = (c["semantic_score"]
+                                 + (0.5 if name_hit else 0.0)
+                                 + 0.1 * overlap)
+        ranked = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
+        return ranked[:top_n]
+
+    # ----- 5. Risk classification -----------------------------------------
+    def predict_risk(self, health_context: dict) -> dict:
+        """
+        health_context has the 5 feature keys. Returns risk level + top factors.
+
+        Responsible-AI behaviour: if the user gives a condition/medication/age
+        the model was never trained on (e.g. "cancer"), we do NOT silently map
+        it to a known class. Instead we return "Caution" with an honest warning,
+        because predicting on unknown input would be misleading in a
+        safety-critical domain.
+        """
+        ctx = build_health_context(health_context)
+        row = []
+        unknown_inputs = {}
+        for col in self.feature_columns:
+            le = self.feature_encoders[col]
+            val = ctx.get(col, "none")
+            if val not in le.classes_:
+                # herb_name has 1000+ classes; an unseen herb is not a safety
+                # problem, so only flag the true safety features.
+                if col != "herb_name":
+                    unknown_inputs[col] = val
+                val = le.classes_[0]
+            row.append(le.transform([val])[0])
+
+        if unknown_inputs:
+            said = ", ".join(f"{v} ({k.replace('_', ' ')})"
+                             for k, v in unknown_inputs.items())
+            known = "; ".join(
+                f"{col.replace('_', ' ')}: "
+                + ", ".join(str(c) for c in self.feature_encoders[col].classes_)
+                for col in unknown_inputs
+            )
+            return {
+                "risk_level": "Caution",
+                "top_factors": list(unknown_inputs.keys()),
+                # Echo what the user told us, so the answer still visibly takes
+                # their condition into account even though it was not scored.
+                "explanation": [
+                    {"feature": k, "value": v, "impact": None}
+                    for k, v in unknown_inputs.items()
+                ],
+                # Machine-readable twin of the warning: the answer generator uses
+                # it to name the condition in the answer, and the UI could use it
+                # to style the notice.
+                "unknown_context": unknown_inputs,
+                "warning": (
+                    f"You told us: {said}. The risk model was not trained on "
+                    f"that, so no risk level is being predicted for you — the "
+                    f"answer is marked Caution and reflects only what the "
+                    f"knowledge base records about the herb. Please check with "
+                    f"a qualified Ayurvedic or medical practitioner. "
+                    f"It can only score {known}."
+                ),
+            }
+
+        X = pd.DataFrame([row], columns=self.feature_columns)
+        pred = self.risk_model.predict(X)[0]
+        level = self.target_encoder.inverse_transform([pred])[0]
+
+        explanation = self._explain_risk(X, pred, ctx)
+        top_factors = [e["feature"] for e in explanation[:2]]
+        return {
+            "risk_level": level,
+            "top_factors": top_factors,
+            "explanation": explanation,
+        }
+
+    # Phrases in a query that state the user's own condition or medication,
+    # mapped to the categories the risk classifier was trained on. Only
+    # first-person statements count - "is X safe in pregnancy" is a general
+    # question, "I am pregnant" is a fact about the person asking.
+    _SELF_STATED = [
+        (r"\b(i am|i'm|im)\s+pregnan|\bmy pregnan|\bi am expecting\b", "patient_condition", "pregnancy"),
+        (r"\bi am breastfeeding\b|\bi'm breastfeeding\b|\bim breastfeeding\b|\bi am nursing\b", "patient_condition", "breastfeeding"),
+        (r"\bi have diabet|\bi'm diabetic\b|\bi am diabetic\b|\bim diabetic\b|\bmy diabetes\b", "patient_condition", "diabetes"),
+        (r"\bi have (high blood pressure|hypertension)\b|\bmy blood pressure\b", "patient_condition", "hypertension"),
+        (r"\bi have kidney\b|\bmy kidney", "patient_condition", "kidney disease"),
+        (r"\bi have liver\b|\bmy liver", "patient_condition", "liver disease"),
+        (r"\bi have heart\b|\bmy heart (disease|condition)\b", "patient_condition", "heart disease"),
+        (r"\bi (take|am on|'m on)\s+(insulin|metformin)\b", "medication_context", "antidiabetic"),
+        (r"\bi (take|am on|'m on)\s+(warfarin|blood thinner|anticoagulant)\b", "medication_context", "anticoagulant"),
+        (r"\bi (take|am on|'m on)\s+antibiotic", "medication_context", "antibiotics"),
+    ]
+
+    def _context_from_query(self, query: str) -> dict:
+        """Extract health context the user stated about themselves in the query."""
+        q = (query or "").lower()
+        found = {}
+        for pattern, field, value in self._SELF_STATED:
+            if re.search(pattern, q):
+                found[field] = value
+        return found
+
+    # "I have <something>" where <something> is not one of the seven conditions
+    # the classifier knows. Kept deliberately narrow, because a false positive
+    # here downgrades a perfectly answerable question to "Caution".
+    _FREE_CONDITION = re.compile(
+        r"\bi (?:have|suffer from|am suffering from|was diagnosed with)\s+"
+        r"((?:[a-z]+ ){0,2}[a-z]+)"
+    )
+    # Words that show the captured phrase is not a diagnosis, plus the
+    # conditions _SELF_STATED already maps to a trained category.
+    _NOT_A_CONDITION = {
+        "question", "questions", "doubt", "herb", "herbs", "plant", "plants",
+        "some", "this", "that", "these", "those", "it", "a", "an", "no", "none",
+        "used", "taken", "tried", "been", "read", "heard", "one", "two", "them",
+        "medicine", "medication", "medications", "tablets", "the", "my", "your",
+        "diabetes", "diabetic", "pregnancy", "pregnant", "kidney", "liver",
+        "heart", "hypertension", "cardiac", "renal",
+    }
+    # The diagnosis ends here: "thyroid disease can i take X" is "thyroid
+    # disease", not "thyroid disease can".
+    _CLAUSE_BREAK = {
+        "can", "could", "should", "would", "may", "is", "are", "was", "were",
+        "do", "does", "did", "will", "and", "but", "so", "if", "when", "while",
+        "what", "which", "who", "how", "why", "please", "i", "we", "you",
+        "for", "with", "to", "of", "in", "on", "at", "from", "about",
+    }
+
+    def _free_condition_from_query(self, query: str):
+        """
+        Pull a condition the classifier was never trained on out of the query,
+        e.g. "I have asthma" -> "asthma".
+
+        Returns None unless the phrase looks like an actual diagnosis: the known
+        conditions are already handled by _SELF_STATED, and anything containing a
+        filler word is rejected rather than guessed at.
+        """
+        m = self._FREE_CONDITION.search((query or "").lower())
+        if not m:
+            return None
+
+        words = []
+        for w in re.sub(r"\s+", " ", m.group(1)).strip(" .,?").split():
+            if w in self._CLAUSE_BREAK:
+                break
+            words.append(w)
+
+        phrase = " ".join(words)
+        if len(phrase) < 4:
+            return None
+        if any(w in self._NOT_A_CONDITION for w in words):
+            return None
+        return phrase
+
+    def _explain_risk(self, X, predicted_class, ctx) -> list:
+        """
+        Per-prediction SHAP explanation for one risk classification.
+
+        This replaces an earlier version that ranked features by the Random
+        Forest's GLOBAL `feature_importances_`. Those are a property of the
+        trained model, not of the input, so every prediction returned the same
+        two factors no matter what the patient context was. SHAP values are
+        computed for this specific row, so pregnancy and anticoagulant use now
+        produce genuinely different explanations.
+
+        Returns a list of {feature, value, impact}, strongest first.
+        """
+        try:
+            if self._shap_explainer is None:
+                import shap
+                # Built lazily: pipeline start-up is already slow, and a user who
+                # never asks a safety question never pays for this.
+                self._shap_explainer = shap.TreeExplainer(self.risk_model)
+
+            shap_values = self._shap_explainer.shap_values(X)
+
+            # shap returns a list-per-class on older versions and a 3-D array
+            # (rows, features, classes) on newer ones. Handle both.
+            if isinstance(shap_values, list):
+                contrib = np.asarray(shap_values[predicted_class])[0]
+            else:
+                arr = np.asarray(shap_values)
+                contrib = arr[0, :, predicted_class] if arr.ndim == 3 else arr[0]
+
+            order = np.argsort(np.abs(contrib))[::-1]
+            out = []
+            for i in order[:3]:
+                col = self.feature_columns[i]
+                # herb_name carries little safety meaning and has 1000+ levels;
+                # showing it would crowd out the factors that matter.
+                if col == "herb_name":
+                    continue
+                out.append({
+                    "feature": col,
+                    "value": ctx.get(col, ""),
+                    "impact": round(float(contrib[i]), 4),
+                })
+            return out
+        except Exception:
+            # Explainability must never break a safety answer. Fall back to the
+            # global importances rather than failing the whole request.
+            importances = self.risk_model.feature_importances_
+            order = np.argsort(importances)[::-1]
+            return [
+                {"feature": self.feature_columns[i],
+                 "value": ctx.get(self.feature_columns[i], ""),
+                 "impact": None}
+                for i in order[:2] if self.feature_columns[i] != "herb_name"
+            ]
+
+    # ----- 6. Answer generation -------------------------------------------
+    def _build_prompt(self, query, records, health_context, risk):
+        context_text = "\n\n".join(
+            f"Herb (Sinhala): {r.get('herb_name_sinhala')}\n"
+            f"English name: {r.get('herb_name_english')}\n"
+            f"Latin name: {r.get('herb_name_latin')}\n"
+            f"Family: {r.get('family')}\n"
+            f"Synonyms: {r.get('synonyms')}\n"
+            f"Description: {r.get('description')}\n"
+            f"Used for (treatment): {r.get('treatment_for')}\n"
+            f"Parts used in treatment: {r.get('parts_used_in_treatment')}\n"
+            f"Dosage: {r.get('dosage')}\n"
+            f"Contraindications: {r.get('contraindications')}\n"
+            f"Medical properties: {r.get('medical_properties')}\n"
+            f"Compounds: {r.get('compounds')}\n"
+            f"Edible parts: {r.get('edible_parts')}\n"
+            f"Native distribution: {r.get('native_distribution')}\n"
+            # conservation_status is deliberately not sent: it describes how
+            # threatened the species is, not how it is used medicinally, and it
+            # was cluttering the answers.
+
+            f"Source: {r.get('source')} (type: {r.get('source_type')})"
+            for r in records
+        )
+        safety = ""
+        if risk:
+            safety = (f"\nSafety risk level for this user context: {risk['risk_level']} "
+                      f"(main factors: {', '.join(risk['top_factors'])}).")
+
+        # The user's own context, in words. Without this the answer never
+        # mentions the condition they typed, which matters most exactly when the
+        # risk classifier could not score it: the retrieved records are then the
+        # only safety signal left, so the model has to be told what to check for.
+        profile = ""
+        unknown_note = ""
+        if health_context:
+            hc = build_health_context(health_context)
+            stated = [f"{k.replace('_', ' ')}: {v}"
+                      for k, v in (("patient_condition", hc["patient_condition"]),
+                                   ("medication_context", hc["medication_context"]),
+                                   ("age_group", hc["age_group"]),
+                                   ("dosage_form", hc["dosage_form"]))
+                      if v and v != "none"]
+            if stated:
+                profile = "\n=== THIS USER ===\n" + "; ".join(stated)
+            unknown = (risk or {}).get("unknown_context") or {}
+            condition = unknown.get("patient_condition") or unknown.get("medication_context")
+            if condition:
+                unknown_note = (
+                    f"\nThe user's '{condition}' is not a category the risk "
+                    f"classifier knows, so the records are the only safety "
+                    f"evidence available. State plainly whether the records "
+                    f"mention '{condition}' and, if they do not, say so instead "
+                    f"of reasoning about it."
+                )
+        return (
+            "You are a Sri Lankan medicinal herb knowledge assistant.\n"
+            "Answer the user's question ONLY using the herb records provided below.\n"
+            "Refer to a herb by its Sinhala name first, with the English and "
+            "Latin names in brackets after it. Use only names copied from the "
+            "records below; never use a name that appears in these "
+            "instructions.\n"
+            "STRICT GROUNDING RULES:\n"
+            "1. Every medical claim you make must be copied from the records. "
+            "Do NOT add reasons, mechanisms, or effects that are not written "
+            "there (for example, do not explain WHY a herb is unsafe unless the "
+            "records say so).\n"
+            "2. If the records do not mention the specific condition asked "
+            "about, say exactly: 'The knowledge base does not record any "
+            "specific contraindication for this condition.' Then list only the "
+            "contraindications that ARE recorded, word for word.\n"
+            "3. Never conclude that a herb is safe or unsafe for a condition "
+            "that the records do not mention. Say the information is not "
+            "recorded and refer the user to a practitioner.\n"
+            "4. If the records are about completely different herbs than the "
+            f"one asked about, reply exactly: \"{FALLBACK_ANSWER}\"\n"
+            "5. If a health profile for this user is given below, check the "
+            "recorded contraindications against it and say whether the records "
+            "mention that condition or medication. Do not invent an interaction "
+            "that the records do not state.\n"
+            "Always add a short safety note telling the user to consult a qualified "
+            "Ayurvedic or medical practitioner for personal use.\n"
+            "ANSWER LENGTH: if the user asks about a herb in general, describe "
+            "the first record fully, covering each piece of information it "
+            "contains and keeping the record's own field labels. If the user "
+            "asks a narrow question, such as only the dosage or only the "
+            "safety, answer just that point.\n"
+            "Write only the answer itself. Do not repeat these instructions or "
+            "any list of headings from them.\n\n"
+            f"=== HERB RECORDS ===\n{context_text}\n{safety}{unknown_note}"
+            f"{profile}\n\n"
+            f"=== USER QUESTION ===\n{query}\n\n=== ANSWER ==="
+        )
+
+    def generate_answer(self, query, records, health_context=None, risk=None) -> str:
+        prompt = self._build_prompt(query, records, health_context, risk)
+        try:
+            import ollama
+            resp = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                # Ollama unloads the model after 5 idle minutes by default, and
+                # reloading 2.6 GB costs ~15 s on the next question. Hold it.
+                keep_alive=OLLAMA_KEEP_ALIVE,
+                # Generation runs at ~11 tok/s on CPU, so an answer that runs
+                # away is the difference between a 6 s and a 60 s reply.
+                options={"num_predict": OLLAMA_MAX_TOKENS},
+            )
+            return resp["message"]["content"].strip()
+        except Exception as e:
+            # Fallback so the app still works without Ollama installed/running.
+            top = records[0] if records else None
+            if not top:
+                return FALLBACK_ANSWER
+            note = ("\n\n[Note: Llama 3.2 / Ollama is not available, so this is a "
+                    "template answer built directly from the retrieved records. "
+                    "Start Ollama to get a generated answer.]")
+
+            names = f"{top.get('herb_name_sinhala')}"
+            extra = ", ".join(x for x in (top.get("herb_name_english"),
+                                          top.get("herb_name_latin")) if x)
+            if extra:
+                names += f" ({extra})"
+
+            # Show every field the record actually has, skipping empty ones.
+            fields = [
+                ("Family", "family"),
+                ("Also known as", "synonyms"),
+                ("Description", "description"),
+                ("Used for", "treatment_for"),
+                ("Parts used in treatment", "parts_used_in_treatment"),
+                ("Dosage", "dosage"),
+                ("Contraindications", "contraindications"),
+                ("Medical properties", "medical_properties"),
+                ("Compounds", "compounds"),
+                ("Edible parts", "edible_parts"),
+                ("Native distribution", "native_distribution"),
+                # ("Conservation status", "conservation_status"),  # hidden by request
+            ]
+            lines = [f"{names}", ""]
+            for label, key in fields:
+                val = str(top.get(key, "")).strip()
+                if val:
+                    lines.append(f"{label}: {val}")
+            lines.append("")
+            lines.append(f"Source: {top.get('source')} ({top.get('source_type')})")
+            lines.append("")
+            lines.append("Safety note: please consult a qualified Ayurvedic or "
+                         "medical practitioner before personal use.")
+            return "\n".join(lines) + note
+
+    # ----- Orchestrator ----------------------------------------------------
+    OUT_OF_SCOPE_THRESHOLD = 0.30  # top FAISS score below this = not a herb question
+
+    # Words that show the user is referring back to the previous herb
+    # ("tell me more about that", "what are its compounds").
+    _REFERRING_WORDS = {"that", "it", "its", "this", "more", "else", "also",
+                        "them", "they", "same", "further", "detail", "details"}
+
+    # Words that signal the user wants a LIST of herbs, not more about one herb.
+    _LIST_WORDS = {"herbs", "plants", "options", "alternatives", "list",
+                   "suggestions", "recommend", "recommendations", "which"}
+
+    def resolve_reference(self, query: str, last_herb: str):
+        """
+        Turn a follow-up like "give me more details about that" into
+        "... about Ranawara", so retrieval has something to search for.
+
+        Fires only when the query is genuinely about the previous herb. It must
+        contain a referring word AND must not be a self-contained new question.
+
+        Three things block it, because "that" does not always point backwards:
+          * the query already names a herb;
+          * the query names a condition, so "that" refers to the condition
+            ("I have diabetes, what herbs are good for that?" - "that" is the
+            diabetes, not the herb discussed a moment ago);
+          * the query asks for a list, which is a new search rather than a
+            follow-up about one herb.
+        """
+        if not last_herb:
+            return query, None
+        q = query.lower()
+        words = set(re.findall(r"[a-z]+", q))
+
+        if any(re.search(rf"\b{re.escape(n)}\b", q) for n in self._name_index):
+            return query, None
+        if not (words & self._REFERRING_WORDS):
+            return query, None
+        if words & self._LIST_WORDS:
+            return query, None
+        if any(re.search(rf"\b{re.escape(d)}\b", q) for d in self._disease_terms):
+            return query, None
+
+        # Append the bare name (not "about <name>") so the phrasing stays
+        # natural and lookup_by_name can match it.
+        return f"{query} {last_herb}", last_herb
+
+    def is_out_of_scope(self, query: str) -> bool:
+        """Greetings/off-topic queries retrieve nothing relevant (low score)."""
+        top = self.retrieve(query, k=1)
+        return (not top) or top[0]["semantic_score"] < self.OUT_OF_SCOPE_THRESHOLD
+
+    def answer_query(self, query, health_context=None, last_herb=None):
+        """
+        Full pipeline. If the query needs health context and none is supplied,
+        returns the follow-up questions instead of a final answer.
+
+        `last_herb` is the herb discussed in the previous turn; it lets
+        follow-ups such as "tell me more about that" work.
+        """
+        # Fix misspelled herb names first ("kohoba" -> "Kohomba"), otherwise
+        # semantic search has no correct name to anchor on.
+        query, corrections = self.correct_herb_names(query)
+
+        # Resolve "that"/"it" back to the herb from the previous turn.
+        query, followed_up_on = self.resolve_reference(query, last_herb)
+
+        # Out-of-scope check BEFORE intent/health-context, so greetings like
+        # "how are u?" don't trigger the safety questionnaire.
+        # A resolved follow-up already names a known herb, so it is in scope by
+        # definition -- only run the out-of-scope check on unresolved queries.
+        if followed_up_on is None and self.is_out_of_scope(query):
+            return {
+                "type": "out_of_scope",
+                "intent": None,
+                "corrections": corrections,
+                "answer": ("I'm a Sri Lankan medicinal herb knowledge assistant. "
+                           "Please ask me about herbs, their uses, dosage, "
+                           "properties, or safety — for example: "
+                           "'What is Gotukola used for?'"),
+                "risk": None,
+                "sources": [],
+            }
+
+        intent = self.classify_intent(query)
+        needs_ctx = self.needs_health_context(query, intent)
+
+        if needs_ctx and health_context is None:
+            return {
+                "type": "need_context",
+                "intent": intent,
+                "corrections": corrections,
+                "followup_questions": self.followup_questions(query, intent),
+                # The questions we skipped were skipped because the query
+                # already answered them. Hand those answers back so the caller
+                # can carry them into the context instead of losing them.
+                "known_context": self.known_context(query),
+            }
+
+        # Hybrid retrieval: semantic (FAISS) + lexical (exact herb-name lookup),
+        # so a herb named in the query can never be missed.
+        candidates = self.retrieve(query, k=8)
+        seen_ids = {c.get("herb_id") for c in candidates}
+        for rec in self.lookup_by_name(query):
+            if rec.get("herb_id") not in seen_ids:
+                seen_ids.add(rec.get("herb_id"))
+                candidates.append(rec)
+
+        records = self.rerank(query, candidates, top_n=4)
+
+        risk = None
+        effective_ctx = health_context
+        if needs_ctx and health_context is not None:
+            hc = dict(health_context)
+            # A condition stated in the query outranks the stored profile.
+            # "I have diabetes, what herbs help?" must not be scored against a
+            # saved profile that still says patient_condition = "none", or the
+            # safety check silently evaluates the wrong person.
+            hc.update(self._context_from_query(query))
+
+            # A condition the classifier has no category for ("I have asthma")
+            # would otherwise be dropped, and the answer scored as if the user
+            # had said "none". Carry it through so predict_risk can see that it
+            # is unknown and return Caution instead of a confident "Safe".
+            # "other" means the user chose the escape hatch but typed nothing,
+            # so the query is still the better source.
+            stated = str(hc.get("patient_condition", "none")).strip().lower()
+            if stated in ("", "none", "other"):
+                free = self._free_condition_from_query(query)
+                if free:
+                    hc["patient_condition"] = free
+
+            hc.setdefault("herb_name", records[0].get("herb_name_english", "unknown"))
+            risk = self.predict_risk(hc)
+            # The answer must describe the same person the risk was scored for.
+            effective_ctx = hc
+
+        answer = self.generate_answer(query, records, effective_ctx, risk)
+        return {
+            "type": "answer",
+            "intent": intent,
+            "corrections": corrections,
+            "followed_up_on": followed_up_on,
+            "answer": answer,
+            "risk": risk,
+            "sources": [
+                {"herb": r.get("herb_name_sinhala"),
+                 "herb_english": r.get("herb_name_english"),
+                 "herb_latin": r.get("herb_name_latin"),
+                 "source": r.get("source"),
+                 "source_type": r.get("source_type"),
+                 "score": round(r.get("rerank_score", 0), 3)}
+                for r in records
+            ],
+        }
+
+
+if __name__ == "__main__":
+    print("Loading pipeline (first run downloads the embedding model)...")
+    pipe = HerbRAGPipeline()
+    print("Loaded.\n")
+
+    # 1) General query -> should answer directly
+    print(">>> Query: 'What is Gotukola used for?'")
+    out = pipe.answer_query("What is Gotukola used for?")
+    print(json.dumps(out, indent=2)[:1200], "\n")
+
+    # 2) Safety query with no context -> should ask follow-ups
+    print(">>> Query: 'Is Kohomba safe during pregnancy?' (no context yet)")
+    out = pipe.answer_query("Is Kohomba safe during pregnancy?")
+    print(json.dumps(out, indent=2), "\n")
+
+    # 3) Same query WITH health context -> should answer + risk level
+    print(">>> Same query WITH health context provided")
+    ctx = {"patient_condition": "pregnancy", "medication_context": "none",
+           "age_group": "adult", "dosage_form": "herbal tea"}
+    out = pipe.answer_query("Is Kohomba safe during pregnancy?", health_context=ctx)
+    print(json.dumps(out, indent=2)[:1500])
