@@ -22,7 +22,7 @@ import json
 import os
 from datetime import datetime
 
-from rag_pipeline import HerbRAGPipeline
+from backend.rag_herb_assistant.services.rag_pipeline_old import HerbRAGPipeline
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.normpath(os.path.join(_HERE, "..", "data", "query_log.csv"))

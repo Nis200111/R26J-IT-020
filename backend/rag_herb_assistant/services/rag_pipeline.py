@@ -28,6 +28,7 @@ import pandas as pd
 import faiss
 from sentence_transformers import SentenceTransformer
 
+from risk_fusion import fuse as fuse_risk
 from health_context_checker import (
     requires_health_context,
     get_followup_questions,
@@ -329,6 +330,8 @@ class HerbRAGPipeline:
         X = pd.DataFrame([row], columns=self.feature_columns)
         pred = self.risk_model.predict(X)[0]
         level = self.target_encoder.inverse_transform([pred])[0]
+        # Top-class probability, used by risk_fusion to decide when to abstain.
+        proba_max = float(np.max(self.risk_model.predict_proba(X)[0]))
 
         explanation = self._explain_risk(X, pred, ctx)
         top_factors = [e["feature"] for e in explanation[:2]]
@@ -336,6 +339,7 @@ class HerbRAGPipeline:
             "risk_level": level,
             "top_factors": top_factors,
             "explanation": explanation,
+            "proba_max": proba_max,
         }
 
     # Phrases in a query that state the user's own condition or medication,
@@ -500,6 +504,13 @@ class HerbRAGPipeline:
         if risk:
             safety = (f"\nSafety risk level for this user context: {risk['risk_level']} "
                       f"(main factors: {', '.join(risk['top_factors'])}).")
+            fusion = risk.get("fusion")
+            if fusion:
+                safety += f"\nBasis: {fusion['explanation']}"
+                if fusion.get("abstained"):
+                    safety += ("\nThe evidence is insufficient. Do NOT state that the "
+                               "herb is safe. Say that the records cannot confirm "
+                               "safety for this user and refer them to a practitioner.")
 
         # The user's own context, in words. Without this the answer never
         # mentions the condition they typed, which matters most exactly when the
@@ -756,6 +767,17 @@ class HerbRAGPipeline:
 
             hc.setdefault("herb_name", records[0].get("herb_name_english", "unknown"))
             risk = self.predict_risk(hc)
+
+            # Evidence-grounded fusion: the retrieved record's own
+            # contraindications can raise (never lower) the ML risk level, and
+            # the system abstains when neither source can support an answer.
+            # Keep the raw ML output for the ablation study and explanations.
+            fusion = fuse_risk(risk, records[0], build_health_context(hc),
+                               proba_max=risk.get("proba_max"))
+            risk["ml_risk_level"] = risk["risk_level"]
+            risk["risk_level"] = fusion["risk_level"]
+            risk["fusion"] = fusion
+
             # The answer must describe the same person the risk was scored for.
             effective_ctx = hc
 
