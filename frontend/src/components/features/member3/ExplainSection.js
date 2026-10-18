@@ -27,7 +27,7 @@ export default function ExplainSection() {
           </div>
 
           <p className="text-sm leading-relaxed text-zinc-600 group-hover:text-zinc-700 transition-colors duration-300">
-            AI-powered leaf health classification using EfficientNetB4 deep neural networks — accurately determines whether a medicinal herb leaf is healthy or diseased, verifying its suitability for Ayurvedic drug formulation.
+            AI-powered leaf health classification using EfficientNetB4 deep neural networks — accurately determines whether a medicinal herb leaf exhibits healthy or diseased visual features for research screening.
           </p>
 
           {/* Capability checklist */}
@@ -55,7 +55,7 @@ export default function ExplainSection() {
                 <Sparkles className="h-3 w-3" />
               </div>
               <span className="text-xs font-bold text-zinc-700">
-                Ayurvedic Remedies & Quality Verification
+                Proposed Visual Leaf-Condition Grading
               </span>
             </div>
           </div>

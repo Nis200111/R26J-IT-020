@@ -62,7 +62,7 @@ export default function PlantDiseaseDetectionPage() {
         title="Medicinal Leaf"
         accent="Health Detection"
         image="/herbs_banner.png"
-        description="Upload or capture a medicinal leaf image. Our EfficientNetB4 deep learning model classifies whether the leaf is healthy or diseased, determining its suitability for Ayurvedic medicine production."
+        description="Upload or capture a medicinal leaf image. Our EfficientNetB4 deep learning model classifies whether the leaf exhibits healthy or diseased visual features, proposing a heuristic visual leaf-condition grade for research screening."
       />
 
       <div className="container mx-auto px-4 sm:px-6 py-10">
@@ -72,7 +72,7 @@ export default function PlantDiseaseDetectionPage() {
             {[
               { icon: <Microscope className="h-4 w-4 text-emerald-700" />, text: "EfficientNetB4 Classifier" },
               { icon: <Leaf className="h-4 w-4 text-emerald-700" />, text: "Healthy vs Diseased Detection" },
-              { icon: <Shield className="h-4 w-4 text-emerald-700" />, text: "Ayurvedic Quality Verification (AMS)" },
+              { icon: <Shield className="h-4 w-4 text-emerald-700" />, text: "Proposed Visual Leaf-Condition Grading" },
             ].map((p) => (
               <span
                 key={p.text}

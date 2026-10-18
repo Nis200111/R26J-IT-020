@@ -121,47 +121,48 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
 
 
 # ─────────────────────────────────────────────
-# Ayurvedic Quality Grading (AMS Framework)
+# Proposed Visual Leaf-Condition Grading
 # ─────────────────────────────────────────────
 def get_ayurvedic_grade(predicted_class: str, confidence: float) -> dict:
     """
-    Ayurvedic Medicinal Suitability (AMS) Grading.
-    Maps disease classification + confidence to a quality grade
-    based on traditional Ayurvedic medicinal production standards.
+    Proposed Visual Leaf-Condition Grading.
+    Maps visual disease classification + confidence into heuristic confidence bands.
+    This grade reflects visual leaf condition only and does not certify medicinal quality,
+    chemical safety, or pharmacological efficacy.
     """
     if predicted_class == "Healthy":
         if confidence > 0.85:
             return {
                 "grade": "A",
-                "title": "Premium Medicinal Quality",
-                "status": "Approved",
-                "description": "This leaf exhibits excellent health with high confidence. Fully suitable for all forms of Ayurvedic medicinal preparations including internal consumption (kashaya, arishtam) and topical applications.",
+                "title": "High-Confidence Healthy Prediction",
+                "status": "Healthy Appearance Predicted",
+                "description": "This leaf is predicted as healthy with high model confidence (>85%). The 85% cut-off is a heuristic threshold used for confidence banding. This visual prediction does not certify biochemical purity, safety, or medicinal potency.",
                 "color": "emerald",
             }
         elif confidence > 0.65:
             return {
                 "grade": "B",
-                "title": "Acceptable Medicinal Quality",
-                "status": "Conditional Approval",
-                "description": "This leaf appears healthy but with moderate confidence. Recommended for external applications (lepa, taila) and processed preparations (decoction/drying). Manual inspection advised before internal preparations.",
+                "title": "Moderate-Confidence Healthy Prediction",
+                "status": "Healthy Appearance Predicted",
+                "description": "This leaf is predicted as healthy with moderate confidence (65%–85%). The 65% threshold is a heuristic cut-off. Manual verification is advised, as visual screening cannot verify medicinal quality or safety.",
                 "color": "amber",
             }
         else:
             return {
                 "grade": "C",
-                "title": "Uncertain Quality",
+                "title": "Uncertain Healthy Prediction",
                 "status": "Manual Review Required",
-                "description": "The model shows low confidence in its healthy classification. This leaf requires manual inspection by an experienced Ayurvedic practitioner before any medicinal use.",
+                "description": "The model shows low confidence (≤65%) for its healthy prediction. An uncertain prediction requires manual review and expert inspection before any use.",
                 "color": "orange",
             }
     else:
-        # Any disease detected (Rust, Rot, Anthracnose, Bacterial Leaf Spot) -> Strictly REJECTED (Grade D)
+        # Disease class predicted (Rust, Rot, Anthracnose, Bacterial Leaf Spot) -> Grade D
         disease_name = predicted_class.replace('_', ' ')
         return {
             "grade": "D",
-            "title": f"Rejected — {disease_name} Detected",
-            "status": "Strictly Rejected",
-            "description": f"Infection detected ({disease_name}). In traditional Ayurvedic medicine, leaves with any signs of disease are strictly prohibited for pharmaceutical production to prevent microbial contamination and preserve therapeutic efficacy. Discard immediately.",
+            "title": f"Disease Predicted — {disease_name}",
+            "status": "Disease Predicted — Expert Review Recommended",
+            "description": f"Visual disease indicators for {disease_name} were predicted by the model. Physical inspection and expert review are recommended. This visual grade does not evaluate disease severity or biochemical toxicity.",
             "color": "red",
         }
 
@@ -218,9 +219,10 @@ async def predict(file: UploadFile = File(...)):
         is_healthy = predicted_label == "Healthy"
 
         if is_healthy:
-            suitability = "This leaf is 100% suitable for the production of Ayurvedic medicine."
+            suitability = "Classified as healthy based on visible image features. Visual screening completed; medicinal suitability is not verified."
         else:
-            suitability = "This leaf should NOT be used for the production of Ayurvedic medicine."
+            disease_display = predicted_label.replace('_', ' ')
+            suitability = f"Visual indicators of {disease_display} detected. Disease Predicted — Expert Review Recommended."
 
         # Ayurvedic Quality Grading (AMS)
         grade_info = get_ayurvedic_grade(predicted_label, confidence)
