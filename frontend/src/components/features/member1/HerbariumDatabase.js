@@ -139,11 +139,6 @@ export default function HerbariumDatabase() {
                                     <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                                         {p.family}
                                     </span>
-                                    {p.lookAlike && (
-                                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-                                            look-alike
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </button>
@@ -200,7 +195,7 @@ function PlantDetail({ plant, onClose }) {
                     {(() => {
                         const tox = (plant.toxicity || "").toLowerCase();
                         const isToxic = (tox.includes("toxic") || tox.includes("poison") || tox.includes("caution") || tox.includes("irritat") || tox.includes("alkaloid") || tox.includes("glochid"))
-                            && !tox.includes("non-toxic") && !tox.includes("no major toxicity") && !tox.includes("generally safe");
+                            && !tox.includes("non-toxic") && !tox.includes("no major toxicity") && !tox.includes("generally safe") && !tox.includes("not considered a highly toxic");
 
                         return isToxic ? (
                             <div className="mt-3 p-3 rounded-xl border border-red-100 bg-red-50">
@@ -223,16 +218,6 @@ function PlantDetail({ plant, onClose }) {
                         );
                     })()}
 
-                    {plant.lookAlike && (
-                        <div className="mt-3 p-3 rounded-xl border border-amber-100 bg-amber-50">
-                            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                                <ArrowLeftRight className="w-3 h-3" /> Confused with {plant.lookAlike}
-                            </p>
-                            <p className="text-[11px] text-amber-700 leading-relaxed">
-                                {plant.howToTell || "Distinguishing features not documented yet."}
-                            </p>
-                        </div>
-                    )}
 
                     {plant.note && (
                         <p className="mt-3 text-[10px] text-slate-400 leading-relaxed">{plant.note}</p>

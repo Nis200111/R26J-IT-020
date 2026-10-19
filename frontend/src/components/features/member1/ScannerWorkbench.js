@@ -23,14 +23,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
     UploadCloud, Camera, CheckSquare, Search, FileText, AlertTriangle, Info,
     Image as ImageIcon, Check, Loader2, Flame, ChevronRight, X, Activity,
-    ArrowLeftRight, History, GitBranch,
+    ArrowLeftRight, History, GitBranch, Volume2, Share2,
 } from "lucide-react";
 
 import CameraCapture from "@/components/features/member1/CameraCapture";
 import { analyzeImage, downscaleToDataUrl } from "@/lib/imageQuality";
 import { PLANTS, getPlant, displayName } from "@/data/plants";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 /* Real specimen photos that already exist in public/plants/.
    Add more as you photograph the remaining species. */
@@ -55,8 +55,57 @@ export default function ScannerWorkbench() {
     const [elapsed, setElapsed] = useState(0);
     const [dragging, setDragging] = useState(false);
     const [wipe, setWipe] = useState(65);        // heat-map compare slider, 0-100
-    const [history, setHistory] = useState([]);  // this session only
+    const [history, setHistory] = useState([]);
     const timerRef = useRef(null);
+
+    // Load history from localStorage on mount to avoid hydration mismatch
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("scanner_history");
+            if (saved) {
+                setHistory(JSON.parse(saved));
+            }
+        } catch (e) {}
+    }, []);
+
+    // Persist history to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem("scanner_history", JSON.stringify(history));
+        } catch (e) {}
+    }, [history]);
+
+    const handleShare = () => {
+        if (!result || result.transportError) return;
+        const conf = (result.confidence * 100).toFixed(1);
+        const text = `මම මේ ශාකය Bio Heritage AI හරහා ස්කෑන් කළා. මෙය ${conf}% ක විශ්වාසයකින් "${displayName(result.label)}" ලෙස හඳුනාගෙන ඇත.`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    };
+
+    const handleSpeak = () => {
+        if (!result || result.transportError) return;
+        
+        // Cancel any existing speech
+        window.speechSynthesis.cancel();
+
+        const text = result.status === "low" 
+            ? "මෙම ශාකය පද්ධතියට හඳුනාගැනීමට අපහසුයි. කරුණාකර වෛද්‍ය උපදෙස් ලබාගන්න."
+            : `හඳුනාගත් ශාකය ${displayName(result.label)}. කරුණාකර වෛද්‍ය උපදෙස් ලබාගන්න.`;
+            
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "si-LK"; // Sinhala
+        
+        // Sometimes the volume is 0 or rate is weird
+        utterance.volume = 1;
+        utterance.rate = 1;
+
+        utterance.onerror = (e) => {
+            console.error("Speech synthesis failed:", e);
+            alert("ඔබගේ Web Browser එක Sinhala Voice සඳහා සහය නොදක්වයි. කරුණාකර Chrome හෝ Edge හි අලුත්ම සංස්කරණයක් භාවිතා කරන්න.");
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
 
     /* ---------------- backend health ---------------- */
     useEffect(() => {
@@ -198,7 +247,7 @@ export default function ScannerWorkbench() {
             warnings.push("Photo quality checks failed — the result may be unreliable.");
 
         win.document.write(`<!doctype html><html><head><meta charset="utf-8">
-<title>Botanical authentication report</title>
+<title>Botanical species identification report</title>
 <style>
   body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111;max-width:760px;margin:32px auto;padding:0 24px}
   h1{font-size:20px;margin:0 0 2px} .sub{color:#666;font-size:11px;margin:0 0 24px}
@@ -215,7 +264,7 @@ export default function ScannerWorkbench() {
   footer{margin-top:28px;padding-top:12px;border-top:1px solid #ddd;color:#666;font-size:10px}
   h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#666;margin:0 0 4px}
 </style></head><body>
-<h1>Botanical Authentication Report</h1>
+<h1>Botanical Species Identification Report</h1>
 <p class="sub">Bio Heritage AI &middot; Member 1 &middot; ${new Date().toLocaleString()}</p>
 <div class="grid">
   ${reportImage ? `<div><h2>Specimen</h2><img src="${reportImage}" alt=""></div>` : ""}
@@ -414,7 +463,7 @@ export default function ScannerWorkbench() {
                                 ))}
                             </div>
                             <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
-                                Kept in this browser tab only. Refreshing clears it.
+                                Saved securely in your browser. Available across sessions.
                             </p>
                         </div>
                     )}
@@ -555,36 +604,60 @@ export default function ScannerWorkbench() {
                                         {/* candidates */}
                                         <div className="flex flex-col justify-center">
                                             <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-1">
-                                                Classification
+                                                හඳුනාගත් ශාකය
                                             </p>
-                                            <h3 className="text-3xl font-bold text-slate-800 italic mb-1">
-                                                {displayName(result.label)}
-                                            </h3>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <h3 className="text-3xl font-bold text-slate-800">
+                                                    {predicted?.sinhalaName || displayName(result.label)}
+                                                </h3>
+                                                <button onClick={handleSpeak} title="Listen to result"
+                                                    className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 flex items-center justify-center transition-all shadow-sm border border-emerald-100">
+                                                    <Volume2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            {predicted?.scientificName && (
+                                                <p className="text-sm italic text-slate-600 mb-0.5">
+                                                    {predicted.scientificName}
+                                                </p>
+                                            )}
                                             {predicted?.family && (
-                                                <p className="text-xs text-slate-500 mb-5">
+                                                <p className="text-xs text-slate-400 mb-5">
                                                     {predicted.family}
-                                                    {predicted.sinhalaName ? ` · ${predicted.sinhalaName}` : ""}
                                                 </p>
                                             )}
 
                                             <div className="mb-6">
-                                                <div className="flex justify-between items-end mb-2">
+                                                <div className="flex justify-between items-center mb-2">
                                                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-                                                        Confidence
+                                                        ගැලපෙන ප්‍රතිශතය
                                                     </p>
-                                                    <p className={`text-2xl font-bold ${result.status === "high" ? "text-emerald-600"
-                                                        : result.status === "moderate" ? "text-amber-600" : "text-red-600"}`}>
-                                                        {pct(result.confidence)}
-                                                    </p>
+                                                    <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${
+                                                        result.status === "high"
+                                                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                                            : result.status === "moderate"
+                                                                ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                                                : "bg-red-100 text-red-700 border border-red-200"}`}>
+                                                        {result.status === "high"
+                                                            ? (result.confidence >= 0.99 ? "Exact Match" : "Highly Confident")
+                                                            : result.status === "moderate"
+                                                                ? "Likely Match"
+                                                                : "Low Confidence"}
+                                                    </span>
                                                 </div>
                                                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div className={`h-full rounded-full ${result.status === "high" ? "bg-emerald-500"
                                                         : result.status === "moderate" ? "bg-amber-500" : "bg-red-500"}`}
                                                         style={{ width: `${Math.max(2, result.confidence * 100)}%` }} />
                                                 </div>
-                                                <p className="text-[10px] text-slate-400 mt-1.5">
-                                                    {pct(result.margin)} ahead of the next candidate
-                                                </p>
+                                                <div className="flex justify-between mt-1.5">
+                                                    <p className="text-[10px] text-slate-400">
+                                                        {pct(result.margin)} ahead of the next candidate
+                                                    </p>
+                                                    <p className={`text-[10px] font-mono font-semibold ${result.status === "high" ? "text-emerald-600"
+                                                        : result.status === "moderate" ? "text-amber-600" : "text-red-500"}`}>
+                                                        Model Confidence: {pct(result.confidence)}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-2">
@@ -593,8 +666,8 @@ export default function ScannerWorkbench() {
                                             <div className="space-y-1.5">
                                                 {result.predictions?.map((p, i) => (
                                                     <div key={p.label} className="flex items-center gap-2">
-                                                        <span className={`text-[11px] w-40 truncate italic ${i === 0 ? "text-slate-800 font-semibold" : "text-slate-500"}`}>
-                                                            {p.name}
+                                                        <span className={`text-[11px] w-40 truncate ${i === 0 ? "text-slate-800 font-semibold" : "text-slate-500"}`}>
+                                                            {displayName(p.label)}
                                                         </span>
                                                         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                             <div className={`h-full rounded-full ${i === 0 ? "bg-emerald-500" : "bg-slate-300"}`}
@@ -634,6 +707,62 @@ export default function ScannerWorkbench() {
                                                 </p>
                                             </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Validated Plant Information Card */}
+                                {predicted && result.status !== "low" && !result.transportError && (
+                                    <div className="mb-8 rounded-xl border border-emerald-100 bg-emerald-50/40 overflow-hidden">
+                                        <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
+                                            <Info className="w-3.5 h-3.5 text-emerald-600" />
+                                            <h4 className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest">
+                                                Validated Plant Information
+                                            </h4>
+                                        </div>
+                                        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            {predicted.uses?.length > 0 && (
+                                                <div>
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Medicinal Uses</p>
+                                                    <ul className="space-y-1">
+                                                        {predicted.uses.map((u, i) => (
+                                                            <li key={i} className="flex items-start gap-1.5 text-[11px] text-slate-700 leading-snug">
+                                                                <span className="text-emerald-500 mt-0.5 shrink-0">•</span>
+                                                                {u}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Parts Used</p>
+                                                {predicted.partsUsed?.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {predicted.partsUsed.map((p) => (
+                                                            <span key={p} className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-semibold">
+                                                                {p}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : <p className="text-[11px] text-slate-400">—</p>}
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Habitat</p>
+                                                <p className="text-[11px] text-slate-600 leading-relaxed">{predicted.habitat || "—"}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Tamil Name</p>
+                                                <p className="text-[11px] text-slate-600">{predicted.tamilName || "—"}</p>
+                                            </div>
+                                        </div>
+                                        {predicted.toxicity && (
+                                            <div className="mx-5 mb-5 px-4 py-3 rounded-lg bg-amber-50 border border-amber-100">
+                                                <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 mb-1">Toxicity / Safety</p>
+                                                <p className="text-[11px] text-amber-800 leading-relaxed">{predicted.toxicity}</p>
+                                            </div>
+                                        )}
+                                        <p className="px-5 pb-4 text-[9px] text-slate-400 leading-relaxed">
+                                            Source: Gampaha Wickramarachchi University of Indigenous Medicine &amp; Traditional Ayurvedic practitioners, Haldummulla. Not a substitute for professional medical advice.
+                                        </p>
                                     </div>
                                 )}
 
@@ -683,7 +812,11 @@ export default function ScannerWorkbench() {
                                     </div>
                                 )}
 
-                                <div className="mt-auto pt-6 border-t border-slate-100 flex gap-4 justify-end">
+                                <div className="mt-auto pt-6 border-t border-slate-100 flex gap-3 justify-end flex-wrap">
+                                    <button onClick={handleShare} disabled={!!result.transportError}
+                                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#25D366]/10 text-[#075E54] border border-[#25D366]/20 text-xs font-bold hover:bg-[#25D366]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                                        <Share2 className="w-3.5 h-3.5" /> WhatsApp
+                                    </button>
                                     <button onClick={exportReport} disabled={!!result.transportError}
                                         className="px-6 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                                         Export report
@@ -697,16 +830,30 @@ export default function ScannerWorkbench() {
                         )}
                     </div>
 
-                    {/* honest capability note */}
-                    <div className="mt-4 flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-white">
-                        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-slate-500 leading-relaxed">
-                            This classifier recognises <strong>{PLANTS.length} species</strong> and reports a
-                            confidence score. It has no category for &quot;not in the list&quot;, so a plant
-                            outside those {PLANTS.length} will still be assigned to the closest match — which is
-                            why a low-confidence result should be read as <em>unknown</em>, not as a weak
-                            identification.
-                        </p>
+                    {/* System Scope and Safety Guidelines */}
+                    <div className="mt-6 flex flex-col gap-0 rounded-xl border border-amber-200/80 bg-white shadow-sm overflow-hidden">
+                        <div className="bg-amber-50 px-5 py-3 border-b border-amber-100 flex items-center gap-2.5">
+                            <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            <h4 className="text-[11px] font-bold text-amber-900 uppercase tracking-widest">
+                                Important Safety & Usage Guidelines
+                            </h4>
+                        </div>
+                        <div className="p-5 flex flex-col gap-4">
+                            <div className="flex flex-col gap-1.5">
+                                <p className="text-[11px] text-slate-600 leading-relaxed">
+                                    <strong>System Scope:</strong> This tool is designed for <strong>accurate identification</strong> of Sri Lankan medicinal plant species. It covers <strong>{PLANTS.length} species</strong> curated in consultation with Ayurvedic practitioners and domain experts at Gampaha Wickramarachchi University of Indigenous Medicine. <strong>Use this tool to identify the specific plant you are looking for, then verify the result with a qualified practitioner before any use.</strong>
+                                </p>
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                    A low-confidence result (shown in red) indicates the plant is outside the system&apos;s trained scope — it does not imply the plant is safe or unsafe.
+                                </p>
+                            </div>
+
+                            <div className="px-4 py-3 rounded-lg bg-red-50/50 border border-red-100">
+                                <p className="text-[12px] text-red-900 leading-relaxed font-medium">
+                                    <strong>අවධානයට:</strong> මෙම පද්ධතිය ශාක හඳුනාගැනීම සඳහා පමණක් නිර්මාණය කර ඇත. ශාකයක් හඳුනාගත් පසු, ඕනෑම ඖෂධීය හෝ ශාකීය භාවිතයකට පෙර <strong>සුදුසු ආයුර්වේද වෛද්‍යවරයෙකු හෝ ශාකවිද්‍යා විශේෂඥයෙකුගේ</strong> උපදෙස් ලබාගන්න. AI හඳුනාගැනීමක් පමණ සැලකිය යුතු හේතුවක් ලෙස ශාකයක් ගැනීමෙන් වලකින්න.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

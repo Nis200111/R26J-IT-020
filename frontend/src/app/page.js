@@ -171,8 +171,8 @@ export default function Home() {
             </div>
 
             <div className="md:col-span-6 text-left space-y-6">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Botanical Authentication</span>
-              <h3 className="font-serif text-3xl font-bold text-zinc-950">Botanical Plant Authentication &amp; Adulterant Detection</h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Botanical Species Identification</span>
+              <h3 className="font-serif text-3xl font-bold text-zinc-950">Botanical Species Identification</h3>
               <p className="text-xs text-zinc-500 leading-relaxed font-light">
                 Our EfficientNetV2B0 deep learning framework accurately authenticates Sri Lankan medicinal herb species from photographic inputs, detecting adulteration risks and ensuring raw material purity for Ayurvedic medicine preparation.
               </p>

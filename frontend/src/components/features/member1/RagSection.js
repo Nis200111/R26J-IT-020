@@ -15,7 +15,7 @@ export default function MedicinalPlantAuthenticationCard() {
               </svg>
             </div>
             <h2 className="text-xl font-bold tracking-tight text-zinc-800 group-hover:text-emerald-800 transition-colors duration-300">
-              Medicinal Plant Authentication &amp; Adulterant Detection
+              Medicinal Plant Species Identification
             </h2>
           </div>
 

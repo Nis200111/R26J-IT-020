@@ -37,12 +37,12 @@ export default function MedicinalPlantAuthenticationPage() {
             <div className="flex items-center gap-3 mb-4">
               <div className="h-0.5 w-8 bg-emerald-500" />
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">
-                MEMBER 1 &middot; BOTANICAL PLANT AUTHENTICATION
+                MEMBER 1 &middot; BOTANICAL SPECIES IDENTIFICATION
               </span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2">Medicinal Plant</h1>
             <h2 className="text-3xl md:text-4xl italic font-light text-emerald-300 mb-6">
-              Botanical Authentication
+              Species Identification
             </h2>
             <p className="text-sm md:text-base text-slate-300 font-light leading-relaxed max-w-lg">
               Scientific identification of Sri Lankan medicinal plants, with confidence scoring
