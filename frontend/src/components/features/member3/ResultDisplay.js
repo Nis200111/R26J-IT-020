@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import {
@@ -15,7 +16,11 @@ import {
   ChevronUp,
   Sprout,
   AlertOctagon,
-  BookOpen
+  BookOpen,
+  Info,
+  Check,
+  ShieldAlert,
+  ArrowRight
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -41,56 +46,62 @@ function AnimatedConfidence({ value, isHealthy }) {
 
   return (
     <span
-      className={`text-5xl font-bold tabular-nums tracking-tight ${isHealthy ? "text-emerald-600" : "text-red-500"
+      className={`text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight ${isHealthy ? "text-emerald-600" : "text-rose-600"
         }`}
     >
       {display.toFixed(1)}
-      <span className="text-2xl font-medium text-zinc-400">%</span>
+      <span className="text-2xl sm:text-3xl font-semibold text-zinc-400 ml-1">%</span>
     </span>
   );
 }
 
 const DISEASE_INFO = {
   Rust: {
+    sinhalaName: "මලකඩ රෝගය",
     description:
-      "Rust is a fungal disease that causes orange-brown pustules on leaf surfaces, reducing photosynthesis and weakening the plant.",
+      "Rust is a fungal disease that causes orange-brown pustules on leaf surfaces, reducing photosynthesis, draining plant nutrients, and weakening the entire medicinal herb.",
   },
   Rot: {
+    sinhalaName: "කුණුවීමේ රෝගය (Foot / Stem / Leaf Rot)",
     description:
-      "Rot is caused by fungal or bacterial pathogens that break down leaf tissue, leading to soft, discolored, and decaying areas.",
+      "Rot is caused by destructive fungal or bacterial pathogens that break down leaf tissue, leading to soft, discolored, and decaying necrotic areas unfit for human or medicinal consumption.",
   },
   Anthracnose: {
+    sinhalaName: "අළු / කළු පුල්ලි රෝගය",
     description:
-      "Anthracnose is a fungal disease causing dark, sunken lesions on leaves, stems, and fruits, often in warm, humid conditions.",
+      "Anthracnose is a fungal disease causing dark, sunken lesions on leaves, stems, and veins, accelerating leaf fall and spreading rapidly in humid environments.",
   },
   "Bacterial Leaf Spot": {
+    sinhalaName: "බැක්ටීරියා පත්‍ර ලප රෝගය",
     description:
-      "Bacterial Leaf Spot causes water-soaked spots that turn brown with yellow halos, spreading rapidly in wet environments.",
+      "Bacterial Leaf Spot causes water-soaked spots that turn brown with characteristic yellow halos, spreading fast through water splashes and destroying active medicinal phytochemicals.",
   },
 };
 
 const REMEDIES_DATA = {
   Anthracnose: {
-    title: "1. Anthracnose (අළු/කළු පුල්ලි රෝගය)",
+    title: "Anthracnose (අළු/කළු පුල්ලි රෝගය)",
+    subtitle: "දිලීර ආසාදනය පාලනය සහ පත්‍ර ආරක්ෂණ මාර්ගෝපදේශ",
     organicTitle: "කාබනික සහ වගා පාලන නිර්දේශ (Organic & Cultural Management):",
     organic: [
-      "පත්‍රයට ජලය ඉසීම වළකින්න.",
-      "සුදු ලූනු සාරය ජලය සමඟ මිශ්‍ර කර ඉසින්න.",
-      "හිතකර ජෛව දිලීර නාශක (Trichoderma viride) පසට එක් කරන්න."
+      "පත්‍ර මතට කෙලින්ම ජලය ඉසීමෙන් වළකින්න (පත්‍ර නිතර තෙත්ව පැවතීම දිලීර බීජාණු ව්‍යාප්තියට හේතු වේ).",
+      "ස්වාභාවික දිලීර නාශකයක් ලෙස සුදු ලූනු සාරය ජලය සමඟ මිශ්‍ර කර ශාක පත්‍රවලට ඉසින්න.",
+      "හිතකර ක්ෂුද්‍ර ජීවී ජෛව දිලීර නාශකයක් වන ට්‍රයිකොඩර්මා (Trichoderma viride) පසට එක් කරන්න."
     ],
     chemicalTitle: "රසායනික පාලන ක්‍රම (Chemical Control - Optional):",
     chemical: [
-      "බෝඩෝ මිශ්‍රණය 0.25% (Bordeaux Mixture) ශාකයට ඉසීම සහ පසට යෙදීම සිදු කරන්න.",
-      "දැඩි ආසාදනවලදී Chlorothalonil හෝ Mancozeb අඩංගු දිලීර නාශකයක් යොදන්න."
+      "සාම්ප්‍රදායික බෝඩෝ මිශ්‍රණය 0.25% (Bordeaux Mixture) ශාකයට ඉසීම සහ පාමුල පසට යෙදීම සිදු කරන්න.",
+      "දැඩි ආසාදන අවස්ථාවලදී පමණක් Chlorothalonil හෝ Mancozeb අඩංගු නිර්දේශිත දිලීර නාශකයක් යොදන්න."
     ],
     hasChemical: true
   },
   "Bacterial Leaf Spot": {
-    title: "2. Bacterial Leaf Spot (බැක්ටීරියා පත්‍ර ලප රෝගය)",
+    title: "Bacterial Leaf Spot (බැක්ටීරියා පත්‍ර ලප රෝගය)",
+    subtitle: "බැක්ටීරියා පැතිරීම වැළැක්වීම සහ පත්‍ර ආරක්ෂාව",
     organicTitle: "කාබනික සහ වගා පාලන නිර්දේශ (Organic & Cultural Management):",
     organic: [
-      "වගා බිමේ වාතාශ්‍රය හොඳින් පවත්වා ගන්න.",
-      "ආසාදිත පත්‍ර නෙලීමෙන් පසු වහාම වත්තෙන් ඉවත් කර පුළුස්සා දමන්න.",
+      "වගා බිමේ ශාක අතර හොඳින් හිරු එළිය සහ වාතාශ්‍රය ලැබෙන සේ පරතරය පවත්වා ගන්න.",
+      "ආසාදිත පත්‍ර නෙලීමෙන් පසු වහාම වගා බිමෙන් ඉවත් කර පුළුස්සා විනාශ කර දමන්න.",
       "තඹ සල්ෆේට් (මල්කැක්කම්) සහ හුණු මිශ්‍ර කර සාදාගන්නා සාම්ප්‍රදායික බෝඩෝ මිශ්‍රණය (Bordeaux Mixture) බුලත් සහ කෝමාරිකා දෙකටම එකසේ ගැලපෙන විශිෂ්ට බැක්ටීරියා නාශකයකි."
     ],
     chemicalTitle: "රසායනික පාලන ක්‍රම (Chemical Control - Optional):",
@@ -100,11 +111,12 @@ const REMEDIES_DATA = {
     hasChemical: true
   },
   Rot: {
-    title: "3. Rot Diseases (කුණුවීමේ රෝග - Foot/Stem/Leaf Rot)",
+    title: "Rot Diseases (කුණුවීමේ රෝග - Foot/Stem/Leaf Rot)",
+    subtitle: "ජලවහනය හා පාංශු දිලීර මර්දන උපදෙස්",
     organicTitle: "කාබනික සහ වගා පාලන නිර්දේශ (Organic & Cultural Management):",
     organic: [
-      "වගා පාත්තිවල ජලය රැඳී සිටීමට ඉඩ නොදෙන්න (හොඳ ජලවහනයක් පවත්වා ගන්න).",
-      "වේලන ලද කොහොඹ පුන්නක්කු (කොහොඹ ඇටවලින් කොහොඹ තෙල් මිරිකා හැරියාට පස්සේ ඉතිරි වන රොඩු කොටස වේලලා සකස් කරගන්නා වටිනා කාබනික පොහොරක් සහ ස්වාභාවික පළිබෝධ/දිලීර නාශකයක්.) පසට එකතු කරන්න."
+      "වගා පාත්තිවල ජලය කිසිසේත්ම රැඳී සිටීමට ඉඩ නොදෙන්න; උස් පාත්ති සහ හොඳ ජලවහනයක් සහතික කරන්න.",
+      "වේලන ලද කොහොඹ පුන්නක්කු (කොහොඹ ඇටවලින් තෙල් මිරිකා ගත් පසු ඉතිරිවන රොඩු වේලලා සකස් කළ ස්වාභාවික පළිබෝධ/දිලීර නාශක කාබනික පොහොර) පසට එකතු කරන්න."
     ],
     chemicalTitle: "රසායනික පාලන ක්‍රම (Chemical Control - Optional):",
     chemical: [
@@ -113,25 +125,27 @@ const REMEDIES_DATA = {
     hasChemical: true
   },
   Rust: {
-    title: "4. Rust Diseases (මලකඩ රෝගය)",
+    title: "Rust Diseases (මලකඩ රෝගය)",
+    subtitle: "දිලීර මලකඩ පැල්ලම් මර්දනය හා නව පත්‍ර ආරක්ෂාව",
     organicTitle: "කාබනික සහ වගා පාලන නිර්දේශ (Organic & Cultural Management):",
     organic: [
-      "උදෑසන කාලයේදී පමණක් ශාකයට ජලය දමන්න (එවිට දහවල් වනවිට පත්‍ර වේලේ).",
-      "මලකඩ වැළඳුණු කෝමාරිකා පිති හෝ බුලත් කොළ කපා ඉවත් කර, සිනිඳු නව පත්‍ර වර්ධනය වීමට ඉඩ හරින්න."
+      "උදෑසන කාලයේදී පමණක් ශාකයට ජලය දමන්න (එවිට දහවල් වනවිට පත්‍ර හොඳින් වියළී දිලීර බෝවීම වළකී).",
+      "මලකඩ රෝගය වැළඳුණු ආසාදිත කෝමාරිකා පිති හෝ බුලත් කොළ කපා වහාම ඉවත් කර, නීරෝගී නව පත්‍ර වර්ධනයට ඉඩ හරින්න."
     ],
     chemicalTitle: "රසායනික පාලන ක්‍රම (Chemical Control - Optional):",
     chemical: [
-      "අවශ්‍ය නම් Mancozeb වැනි ආරක්ෂක දිලීර නාශකයක් නව වර්ධනයන් (New flushes) මතට ඉසිය හැක."
+      "අවශ්‍ය නම් පමණක් Mancozeb වැනි ආරක්ෂිත දිලීර නාශකයක් ශාකයේ නව වර්ධනයන් (New flushes) මතට ඉසින්න."
     ],
     hasChemical: true
   },
   Healthy: {
-    title: "5. Healthy Plant Maintenance (නීරෝගී ශාක පාලනය)",
-    organicTitle: "නඩත්තු උපදෙස් (Maintenance Guidelines):",
+    title: "Healthy Plant Maintenance (නීරෝගී ශාක පාලනය)",
+    subtitle: "ආයුර්වේද ඖෂධීය ගුණ උපරිමව තබාගැනීමේ ක්‍රමවේද",
+    organicTitle: "නඩත්තු සහ ආරක්ෂණ උපදෙස් (Maintenance Guidelines):",
     organic: [
-      "වගාවේ පිරිසිදුකම දිගටම පවත්වා ගන්න.",
-      "නිසි පරිදි කාබනික පොහොර යොදමින් ශාකයේ ස්වාභාවික ප්‍රතිශක්තිය වර්ධනය කරන්න.",
-      "නව පැල සිටුවීමේදී රෝගවලින් තොර නීරෝගී දඬු/පැති පැල පමණක් භාවිත කරන්න."
+      "වගාවේ පිරිසිදුකම සහ වල් මර්ධනය නොකඩවා දිගටම පවත්වා ගන්න.",
+      "නිසි පරිදි දිරාපත් වූ කාබනික කොම්පෝස්ට් පොහොර යොදමින් ශාකයේ ස්වාභාවික ප්‍රතිශක්තිය හා පත්‍ර සාරය වර්ධනය කරන්න.",
+      "නව පැල සිටුවීමේදී රෝගවලින් තොර සහතික කළ නීරෝගී දඬු සහ පැල පමණක් භාවිත කරන්න."
     ],
     chemicalTitle: null,
     chemical: [],
@@ -149,32 +163,36 @@ const PROB_BAR_COLORS = {
 
 const GRADE_STYLES = {
   A: {
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    text: "text-emerald-700",
-    badge: "bg-emerald-500",
+    bg: "bg-emerald-50/80",
+    border: "border-emerald-300",
+    text: "text-emerald-800",
+    badge: "bg-emerald-600",
     ring: "ring-emerald-200",
+    accent: "bg-emerald-100",
   },
   B: {
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-700",
-    badge: "bg-amber-500",
+    bg: "bg-amber-50/80",
+    border: "border-amber-300",
+    text: "text-amber-800",
+    badge: "bg-amber-600",
     ring: "ring-amber-200",
+    accent: "bg-amber-100",
   },
   C: {
-    bg: "bg-orange-50",
-    border: "border-orange-200",
-    text: "text-orange-700",
-    badge: "bg-orange-500",
+    bg: "bg-orange-50/80",
+    border: "border-orange-300",
+    text: "text-orange-800",
+    badge: "bg-orange-600",
     ring: "ring-orange-200",
+    accent: "bg-orange-100",
   },
   D: {
-    bg: "bg-red-50",
-    border: "border-red-200",
-    text: "text-red-700",
-    badge: "bg-red-500",
-    ring: "ring-red-200",
+    bg: "bg-rose-50/80",
+    border: "border-rose-300",
+    text: "text-rose-800",
+    badge: "bg-rose-600",
+    ring: "ring-rose-200",
+    accent: "bg-rose-100",
   },
 };
 
@@ -184,7 +202,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
   const grade = result.qualityGrade;
   const gradeStyle = grade ? GRADE_STYLES[grade.grade] || GRADE_STYLES.C : null;
 
-  const [isRemediesOpen, setIsRemediesOpen] = useState(false);
+  // Open remedies section by default so farmers/users see vital treatments clearly!
+  const [isRemediesOpen, setIsRemediesOpen] = useState(true);
 
   // Match the prediction label to key in REMEDIES_DATA
   const remedyKey = isHealthy ? "Healthy" : diseaseLabel;
@@ -192,283 +211,374 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in-down">
-      {/* Hero verdict card */}
+      {/* ──────────────────────────────────────────── */}
+      {/* 1. HERO VERDICT CARD */}
+      {/* ──────────────────────────────────────────── */}
       <div
-        className={`relative overflow-hidden rounded-3xl border-2 p-8 transition-all ${isHealthy
-            ? "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30"
-            : "border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50/30"
+        className={`relative overflow-hidden rounded-3xl border-2 p-6 sm:p-8 transition-all shadow-sm ${isHealthy
+          ? "border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50/40"
+          : "border-rose-300 bg-gradient-to-br from-rose-50 via-white to-amber-50/40"
           }`}
       >
-        {/* Decorative glow */}
+        {/* Decorative blur glow */}
         <div
-          className={`absolute -top-20 -right-20 h-60 w-60 rounded-full blur-3xl opacity-20 ${isHealthy ? "bg-emerald-400" : "bg-red-400"
+          className={`absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl opacity-25 pointer-events-none ${isHealthy ? "bg-emerald-500" : "bg-rose-500"
             }`}
         />
 
-        <div className="relative flex flex-col sm:flex-row items-start gap-6">
-          {/* Icon */}
+        <div className="relative flex flex-col sm:flex-row items-start gap-5 sm:gap-6">
+          {/* Main Status Icon */}
           <div
-            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-sm ${isHealthy
-                ? "bg-emerald-100 text-emerald-600"
-                : "bg-red-100 text-red-500"
+            className={`flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-2xl shadow-md ring-4 ${isHealthy
+              ? "bg-emerald-500 text-white ring-emerald-100"
+              : "bg-rose-500 text-white ring-rose-100"
               }`}
           >
             {isHealthy ? (
-              <CheckCircle2 className="h-8 w-8" />
+              <CheckCircle2 className="h-9 w-9 sm:h-11 sm:w-11" />
             ) : (
-              <XCircle className="h-8 w-8" />
+              <XCircle className="h-9 w-9 sm:h-11 sm:w-11" />
             )}
           </div>
 
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${isHealthy
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-red-100 text-red-700"
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider shadow-xs ${isHealthy
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-rose-100 text-rose-800 border border-rose-300"
                   }`}
               >
                 {isHealthy ? (
-                  <Sparkles className="h-3 w-3" />
+                  <Sparkles className="h-3.5 w-3.5" />
                 ) : (
-                  <AlertTriangle className="h-3 w-3" />
+                  <AlertTriangle className="h-3.5 w-3.5" />
                 )}
-                {isHealthy ? "Healthy" : diseaseLabel}
+                {isHealthy ? "Healthy Leaf Verified" : diseaseLabel}
               </span>
+
               {!isHealthy && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800 border border-amber-300 shadow-xs">
+                  <ShieldAlert className="h-3.5 w-3.5" />
                   Disease Detected
                 </span>
               )}
+
+              <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600">
+                Confidence: {result.confidence?.toFixed(1)}%
+              </span>
             </div>
 
             <h2
-              className={`font-serif text-2xl font-bold leading-snug ${isHealthy ? "text-emerald-900" : "text-red-900"
+              className={`font-serif text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight ${isHealthy ? "text-emerald-950" : "text-rose-950"
                 }`}
             >
               {isHealthy
-                ? "Leaf Approved for Ayurvedic Production"
-                : `${diseaseLabel} Detected — Leaf Rejected`}
+                ? "Healthy Appearance Predicted (Visual Screening)"
+                : `${diseaseLabel} Detected — Expert Review Recommended`}
             </h2>
 
             <p
-              className={`text-sm leading-relaxed font-light ${isHealthy ? "text-emerald-700" : "text-red-700"
+              className={`text-base sm:text-lg leading-relaxed font-normal ${isHealthy ? "text-emerald-800" : "text-rose-800"
                 }`}
             >
-              {result.suitability}
+              {result.suitability || (isHealthy
+                ? "Classified as healthy based on visible image features. Visual screening completed; medicinal suitability is not verified."
+                : `Visual disease indicators of ${diseaseLabel} detected. Disease Predicted — Expert Review Recommended.`)}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Ayurvedic Medicinal Suitability (AMS) Quality Grade */}
+      {/* ──────────────────────────────────────────── */}
+      {/* 2. PROPOSED VISUAL LEAF-CONDITION GRADE */}
+      {/* ──────────────────────────────────────────── */}
       {grade && gradeStyle && (
         <div
-          className={`rounded-2xl border-2 ${gradeStyle.border} ${gradeStyle.bg} p-6 shadow-sm`}
+          className={`rounded-3xl border-2 ${gradeStyle.border} ${gradeStyle.bg} p-6 sm:p-7 shadow-sm transition-all`}
         >
-          <div className="flex items-start gap-5">
-            {/* Grade badge */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            {/* Grade Badge */}
             <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${gradeStyle.badge} shadow-lg ring-4 ${gradeStyle.ring}`}
+              className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${gradeStyle.badge} text-white shadow-lg ring-4 ${gradeStyle.ring}`}
             >
-              <span className="text-2xl font-bold text-white">
-                {grade.grade}
-              </span>
+              <div className="text-center">
+                <span className="text-3xl sm:text-4xl font-black tracking-tight block leading-none">
+                  {grade.grade}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                  Grade
+                </span>
+              </div>
             </div>
 
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <Award className={`h-4 w-4 ${gradeStyle.text}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${gradeStyle.text}`}>
+                  Proposed Visual Leaf-Condition Grade
+                </span>
                 <span
-                  className={`text-[10px] font-bold uppercase tracking-wider ${gradeStyle.text}`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${gradeStyle.badge} text-white`}
                 >
-                  Ayurvedic Medicinal Suitability Grade
+                  {grade.status === "Approved" || grade.status === "Healthy Appearance Predicted"
+                    ? "Healthy Appearance Predicted"
+                    : grade.status === "Strictly Rejected"
+                      ? "Disease Predicted — Expert Review Recommended"
+                      : grade.status}
                 </span>
               </div>
 
-              <h3 className={`text-lg font-bold ${gradeStyle.text}`}>
-                Grade {grade.grade} — {grade.title}
+              <h3 className={`text-xl sm:text-2xl font-bold ${gradeStyle.text}`}>
+                Grade {grade.grade} — {grade.title === "Premium Medicinal Quality" ? "High-Confidence Healthy Prediction" : grade.title === "Acceptable Medicinal Quality" ? "Moderate-Confidence Healthy Prediction" : grade.title.startsWith("Rejected") ? `Disease Predicted — ${diseaseLabel}` : grade.title}
               </h3>
 
-              <div
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${gradeStyle.badge} text-white`}
-              >
-                {grade.status}
-              </div>
+              {/* Explicit Scope Sub-Clarification */}
+              <p className="text-xs sm:text-sm font-semibold text-zinc-700 bg-white/70 rounded-xl p-2.5 border border-zinc-200/60">
+                Based on the predicted leaf condition and model confidence. This grade does not certify medicinal quality or safety.
+              </p>
 
-              <p className="text-xs text-zinc-600 leading-relaxed mt-2">
+              <p className="text-sm sm:text-base text-zinc-700 leading-relaxed font-normal">
                 {grade.description}
               </p>
             </div>
           </div>
 
-          {/* Grade scale visualization */}
-          <div className="mt-5 pt-4 border-t border-zinc-200/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
-              Quality Scale
+          {/* Scientific Threshold & Confidence Banding Clarification */}
+          <div className="mt-5 rounded-2xl bg-white/85 border border-zinc-200/90 p-4 sm:p-5 text-xs sm:text-sm text-zinc-600 space-y-2.5">
+            <div className="flex items-center gap-2 font-bold text-zinc-900 text-xs sm:text-sm">
+              <Info className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span>Heuristic Confidence Band Clarification (85% &amp; 65% Thresholds):</span>
+            </div>
+            <p className="leading-relaxed font-medium text-zinc-800">
+              &ldquo;The 85% and 65% thresholds are heuristic cut-offs used to separate healthy predictions into confidence bands. They are not clinically or pharmacologically validated limits.&rdquo;
             </p>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[12px]">
+              <div className="bg-emerald-50/80 rounded-xl p-2.5 border border-emerald-200/70">
+                <span className="font-bold text-emerald-900">Grade A (&gt;85%):</span>
+                <span className="ml-1 text-zinc-700">ඉහළ confidence සහිත Healthy prediction.</span>
+              </div>
+              <div className="bg-amber-50/80 rounded-xl p-2.5 border border-amber-200/70">
+                <span className="font-bold text-amber-900">Grade B (65%–85%):</span>
+                <span className="ml-1 text-zinc-700">මධ්‍යම confidence සහිත Healthy prediction.</span>
+              </div>
+              <div className="bg-orange-50/80 rounded-xl p-2.5 border border-orange-200/70">
+                <span className="font-bold text-orange-900">Grade C (≤65%):</span>
+                <span className="ml-1 text-zinc-700">අවිනිශ්චිත Healthy prediction; manual review අවශ්‍යයි.</span>
+              </div>
+              <div className="bg-rose-50/80 rounded-xl p-2.5 border border-rose-200/70">
+                <span className="font-bold text-rose-900">Grade D (Disease):</span>
+                <span className="ml-1 text-zinc-700">Disease-predicted leaf; expert inspection අවශ්‍යයි.</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Grade Scale Bar */}
+          <div className="mt-5 pt-4 border-t border-zinc-300/60">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                Confidence Band Classification
+              </span>
+              <span className="text-xs font-semibold text-zinc-500">
+                Current: <strong className="text-zinc-800">Grade {grade.grade}</strong>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
               {[
-                { g: "A", label: "Premium", color: "bg-emerald-500" },
-                { g: "B", label: "Acceptable", color: "bg-amber-500" },
-                { g: "C", label: "Uncertain", color: "bg-orange-500" },
-                { g: "D", label: "Rejected", color: "bg-red-500" },
-              ].map((item) => (
-                <div key={item.g} className="flex-1">
+                { g: "A", label: "Grade A", sub: "High Conf", color: "bg-emerald-500", ring: "ring-emerald-400" },
+                { g: "B", label: "Grade B", sub: "Mod Conf", color: "bg-amber-500", ring: "ring-amber-400" },
+                { g: "C", label: "Grade C", sub: "Uncertain", color: "bg-orange-500", ring: "ring-orange-400" },
+                { g: "D", label: "Grade D", sub: "Disease Pred", color: "bg-rose-500", ring: "ring-rose-400" },
+              ].map((item) => {
+                const isActive = item.g === grade.grade;
+                return (
                   <div
-                    className={`h-2 rounded-full transition-all ${item.g === grade.grade
-                        ? `${item.color} shadow-sm scale-y-150`
-                        : "bg-zinc-200"
+                    key={item.g}
+                    className={`rounded-xl p-2.5 text-center transition-all ${isActive
+                      ? "bg-white shadow-md ring-2 " + item.ring
+                      : "bg-white/50 opacity-70"
                       }`}
-                  />
-                  <div className="flex items-center justify-center gap-1 mt-1.5">
-                    <span
-                      className={`text-[9px] font-bold ${item.g === grade.grade
-                          ? "text-zinc-800"
-                          : "text-zinc-400"
+                  >
+                    <div
+                      className={`h-2.5 w-full rounded-full mb-1.5 ${isActive ? item.color : "bg-zinc-200"
                         }`}
-                    >
-                      {item.g}
-                    </span>
-                    <span
-                      className={`text-[8px] hidden sm:inline ${item.g === grade.grade
-                          ? "text-zinc-600 font-semibold"
-                          : "text-zinc-400"
-                        }`}
-                    >
+                    />
+                    <p className={`text-xs font-bold ${isActive ? "text-zinc-900" : "text-zinc-500"}`}>
                       {item.label}
-                    </span>
+                    </p>
+                    <p className="text-[10px] text-zinc-400 font-medium hidden sm:block">
+                      {item.sub}
+                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Disease info card (only for diseased) */}
+
+      {/* ──────────────────────────────────────────── */}
+      {/* 3. DISEASE INFO CARD (If Diseased) */}
+      {/* ──────────────────────────────────────────── */}
       {!isHealthy && DISEASE_INFO[diseaseLabel] && (
-        <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
+        <div className="flex items-start gap-4 rounded-3xl border-2 border-amber-300 bg-amber-50/80 p-5 sm:p-6 shadow-sm">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-200/70 text-amber-800">
+            <AlertTriangle className="h-6 w-6" />
           </div>
-          <div>
-            <p className="text-sm font-bold text-amber-900">
-              About {diseaseLabel}
-            </p>
-            <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-base sm:text-lg font-bold text-amber-950">
+                About {diseaseLabel}
+              </h4>
+              {DISEASE_INFO[diseaseLabel].sinhalaName && (
+                <span className="text-xs sm:text-sm font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                  ({DISEASE_INFO[diseaseLabel].sinhalaName})
+                </span>
+              )}
+            </div>
+            <p className="text-sm sm:text-base text-amber-900 leading-relaxed font-normal">
               {DISEASE_INFO[diseaseLabel].description}
             </p>
           </div>
         </div>
       )}
 
-      {/* Image + Confidence grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {/* Original image */}
-        <div className="flex flex-col gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-            Uploaded Specimen
-          </p>
-          <div className="relative overflow-hidden rounded-2xl border border-zinc-200 shadow-sm aspect-square">
+      {/* ──────────────────────────────────────────── */}
+      {/* 4. SPECIMEN & AI ANALYSIS GRID */}
+      {/* ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Specimen Card */}
+        <div className="flex flex-col gap-2 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+              <Leaf className="h-4 w-4 text-emerald-600" />
+              Uploaded Specimen
+            </span>
+            <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">
+              224 × 224 Input
+            </span>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-200 shadow-inner aspect-square bg-zinc-900/5 mt-1">
             <img
               src={originalImage}
               alt="Uploaded leaf"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
             />
-            {/* Corner brackets */}
-            <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-emerald-500/60 rounded-tl-sm" />
-            <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-emerald-500/60 rounded-tr-sm" />
-            <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-emerald-500/60 rounded-bl-sm" />
-            <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-emerald-500/60 rounded-br-sm" />
+            {/* Viewfinder corner brackets */}
+            <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-emerald-500/80 rounded-tl-sm pointer-events-none" />
+            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-emerald-500/80 rounded-tr-sm pointer-events-none" />
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-emerald-500/80 rounded-bl-sm pointer-events-none" />
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-emerald-500/80 rounded-br-sm pointer-events-none" />
+
+            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+              <span className="rounded-full bg-black/60 backdrop-blur-xs px-3 py-1 text-[11px] font-semibold text-white">
+                Live Scan Complete
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Confidence & Details */}
-        <div className="flex flex-col gap-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-            AI Analysis
-          </p>
+        {/* AI Confidence & Diagnostic Details */}
+        <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-sm justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <BarChart3 className="h-4 w-4 text-emerald-600" />
+                AI Model Confidence
+              </span>
+              <span className="text-xs font-semibold text-zinc-400">
+                EfficientNetB4 v3
+              </span>
+            </div>
 
-          <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm flex-1">
-            {/* Confidence score */}
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 mb-1">
-                Model Confidence
-              </p>
+            <div className="my-3">
               <AnimatedConfidence
                 value={result.confidence}
                 isHealthy={isHealthy}
               />
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100 p-0.5 border border-zinc-200">
                 <div
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isHealthy ? "bg-emerald-500" : "bg-red-500"
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isHealthy ? "bg-emerald-500" : "bg-rose-500"
                     }`}
                   style={{ width: `${result.confidence}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Classification */}
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-              <Leaf
-                className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-500" : "text-red-400"
-                  }`}
-              />
-              <div>
-                <p className="text-xs font-bold text-zinc-800">
-                  Classification
-                </p>
-                <p
-                  className={`text-sm font-semibold ${isHealthy ? "text-emerald-600" : "text-red-600"
+          {/* Key diagnostics breakdown */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <div className="flex items-center gap-2.5">
+                <Leaf
+                  className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-600" : "text-rose-500"
                     }`}
-                >
-                  {isHealthy ? "Healthy" : diseaseLabel}
-                </p>
+                />
+                <span className="text-xs font-semibold text-zinc-600">
+                  Detected Condition
+                </span>
               </div>
+              <span
+                className={`text-sm font-bold ${isHealthy ? "text-emerald-700" : "text-rose-700"
+                  }`}
+              >
+                {isHealthy ? "Healthy" : diseaseLabel}
+              </span>
             </div>
 
-            {/* Suitability */}
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-              <Shield
-                className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-500" : "text-red-400"
-                  }`}
-              />
-              <div>
-                <p className="text-xs font-bold text-zinc-800">
-                  Ayurvedic Suitability
-                </p>
-                <p
-                  className={`text-xs font-medium ${isHealthy ? "text-emerald-600" : "text-red-600"
+            <div className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <div className="flex items-center gap-2.5">
+                <Shield
+                  className={`h-5 w-5 shrink-0 ${isHealthy ? "text-emerald-600" : "text-rose-500"
                     }`}
-                >
-                  {isHealthy ? "Approved for Production" : "Not Suitable"}
-                </p>
+                />
+                <span className="text-xs font-semibold text-zinc-600">
+                  Visual Screening Assessment
+                </span>
               </div>
+              <span
+                className={`text-xs sm:text-sm font-bold ${isHealthy ? "text-emerald-700" : "text-rose-700"
+                  }`}
+              >
+                {isHealthy ? "Healthy Appearance Predicted" : "Disease Predicted — Review Advised"}
+              </span>
             </div>
 
-            {/* Model */}
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-              <FlaskConical className="h-5 w-5 shrink-0 text-zinc-400" />
-              <div>
-                <p className="text-xs font-bold text-zinc-800">Model</p>
-                <p className="text-xs text-zinc-500">EfficientNetB4 v3</p>
+            <div className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+              <div className="flex items-center gap-2.5">
+                <FlaskConical className="h-5 w-5 shrink-0 text-zinc-500" />
+                <span className="text-xs font-semibold text-zinc-600">
+                  Deep Learning Backbone
+                </span>
               </div>
+              <span className="text-xs font-semibold text-zinc-700">
+                EfficientNetB4 (AMS v3)
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Class Probabilities */}
+      {/* ──────────────────────────────────────────── */}
+      {/* 5. ALL CLASS PROBABILITIES */}
+      {/* ──────────────────────────────────────────── */}
       {result.allProbabilities && (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="h-4 w-4 text-zinc-500" />
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              All Class Probabilities
-            </p>
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-emerald-600" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+                Class Probability Distribution
+              </h4>
+            </div>
+            <span className="text-xs text-zinc-400">Softmax Scores</span>
           </div>
-          <div className="space-y-3">
+
+          <div className="space-y-3.5">
             {Object.entries(result.allProbabilities)
               .sort(([, a], [, b]) => b - a)
               .map(([className, prob]) => {
@@ -476,31 +586,31 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                 const isTop =
                   displayName === (isHealthy ? "Healthy" : diseaseLabel);
                 return (
-                  <div key={className}>
-                    <div className="flex items-center justify-between mb-1">
+                  <div key={className} className="space-y-1">
+                    <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-semibold ${isTop ? "text-zinc-900" : "text-zinc-500"
+                        className={`text-sm font-semibold flex items-center gap-2 ${isTop ? "text-zinc-900 font-bold" : "text-zinc-600"
                           }`}
                       >
                         {displayName}
                         {isTop && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-zinc-600">
-                            Predicted
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-extrabold uppercase">
+                            Top Prediction
                           </span>
                         )}
                       </span>
                       <span
-                        className={`text-xs font-bold tabular-nums ${isTop ? "text-zinc-900" : "text-zinc-400"
+                        className={`text-sm font-bold tabular-nums ${isTop ? "text-zinc-900" : "text-zinc-400"
                           }`}
                       >
                         {prob.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${isTop
-                            ? PROB_BAR_COLORS[className] || "bg-zinc-400"
-                            : "bg-zinc-300"
+                          ? PROB_BAR_COLORS[className] || "bg-emerald-500"
+                          : "bg-zinc-300"
                           }`}
                         style={{ width: `${prob}%` }}
                       />
@@ -513,79 +623,152 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
       )}
 
       {/* ──────────────────────────────────────────── */}
-      {/* COLLAPSIBLE ACCORDION: Treatment & Management Guidelines */}
+      {/* 6. VITAL: AYURVEDIC REMEDIES & TREATMENT FUNCTION */}
+      {/* (ENHANCED FOR MAXIMUM CLARITY AND LARGE LEGIBLE FONTS) */}
       {/* ──────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/50 via-white to-amber-50/30 overflow-hidden shadow-sm transition-all">
+      <div className="rounded-3xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50/60 via-white to-amber-50/40 overflow-hidden shadow-md transition-all">
+        {/* Accordion Toggle Header */}
         <button
           onClick={() => setIsRemediesOpen(!isRemediesOpen)}
-          className="w-full flex items-center justify-between p-5 text-left font-bold text-zinc-800 hover:bg-emerald-50/80 transition-colors"
+          className="w-full flex items-center justify-between p-5 sm:p-6 text-left transition-colors hover:bg-emerald-50/80 cursor-pointer focus:outline-none"
         >
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-              <BookOpen className="h-5 w-5" />
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md">
+              <BookOpen className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
             <div>
-              <p className="text-sm font-bold text-zinc-900">
-                View Ayurvedic Remedies & Treatment Guidelines
-              </p>
-              <p className="text-xs font-normal text-zinc-500">
-                {remedyInfo.title}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider">
+                  <Sprout className="h-3.5 w-3.5" />
+                  Ayurvedic Advisory
+                </span>
+                <span className="text-xs text-zinc-500 font-medium">
+                  {remedyInfo.title}
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-zinc-900 mt-1">
+                Ayurvedic Remedies & Treatment Guidelines
+              </h3>
+              <p className="text-sm sm:text-base font-medium text-emerald-800 mt-0.5">
+                ආයුර්වේද ප්‍රතිකාර, කාබනික සහ වගා නිර්දේශ
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-full px-3 py-1 shadow-xs">
+
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-800 bg-white border border-emerald-300 rounded-full px-4 py-2 shadow-xs shrink-0">
             {isRemediesOpen ? (
               <>
-                Hide Details <ChevronUp className="h-4 w-4" />
+                <span> (Hide)</span>
+                <ChevronUp className="h-4 w-4" />
               </>
             ) : (
               <>
-                View Guidelines ⬇️ <ChevronDown className="h-4 w-4" />
+                <span>විස්තර බලන්න (View)</span>
+                <ChevronDown className="h-4 w-4" />
               </>
             )}
           </div>
         </button>
 
         {isRemediesOpen && (
-          <div className="p-5 pt-0 border-t border-emerald-100/80 space-y-5 animate-fade-in">
-            {/* Organic & Cultural Recommendations */}
-            <div className="space-y-2 mt-4">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                <Sprout className="h-4 w-4 text-emerald-600" />
-                <span>{remedyInfo.organicTitle}</span>
-              </div>
-              <ul className="space-y-1.5 pl-6 list-disc text-xs text-zinc-700 leading-relaxed">
-                {remedyInfo.organic.map((item, idx) => (
-                  <li key={idx}>{item}</li>
-                ))}
-              </ul>
+          <div className="p-5 sm:p-8 pt-2 border-t border-emerald-200/80 space-y-6 animate-fade-in">
+            {/* Condition Header Subtitle */}
+            <div className="rounded-2xl bg-white/80 border border-emerald-200/80 p-4 shadow-2xs">
+              <p className="text-base sm:text-lg font-bold text-emerald-950">
+                {remedyInfo.title}
+              </p>
+              {remedyInfo.subtitle && (
+                <p className="text-sm sm:text-base text-zinc-600 mt-0.5">
+                  {remedyInfo.subtitle}
+                </p>
+              )}
             </div>
 
-            {/* Chemical Controls (Optional) */}
-            {remedyInfo.hasChemical && remedyInfo.chemical.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-zinc-100">
-                <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
-                  <FlaskConical className="h-4 w-4 text-purple-600" />
-                  <span>{remedyInfo.chemicalTitle}</span>
+            {/* SECTION 1: Organic & Cultural Recommendations */}
+            <div className="rounded-2xl bg-white border border-emerald-200/90 p-5 sm:p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2.5 pb-2 border-b border-emerald-100">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Sprout className="h-5 w-5" />
                 </div>
-                <ul className="space-y-1.5 pl-6 list-disc text-xs text-zinc-700 leading-relaxed">
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-emerald-900">
+                  {remedyInfo.organicTitle}
+                </h4>
+              </div>
+
+              <div className="space-y-3">
+                {remedyInfo.organic.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 rounded-xl bg-emerald-50/40 border border-emerald-100 p-3.5 sm:p-4 transition-all hover:bg-emerald-50/70"
+                  >
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <p className="text-base sm:text-[17px] text-zinc-800 leading-relaxed font-normal">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SECTION 2: Chemical Controls (Optional) */}
+            {remedyInfo.hasChemical && remedyInfo.chemical.length > 0 && (
+              <div className="rounded-2xl bg-white border border-purple-200/90 p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-purple-100">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                    <FlaskConical className="h-5 w-5" />
+                  </div>
+                  <h4 className="text-base sm:text-lg md:text-xl font-bold text-purple-950">
+                    {remedyInfo.chemicalTitle}
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
                   {remedyInfo.chemical.map((item, idx) => (
-                    <li key={idx}>{item}</li>
+                    <div
+                      key={idx}
+                      className="flex items-start gap-3 rounded-xl bg-purple-50/40 border border-purple-100 p-3.5 sm:p-4 transition-all hover:bg-purple-50/70"
+                    >
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-600 text-white text-xs font-bold mt-0.5">
+                        {idx + 1}
+                      </div>
+                      <p className="text-base sm:text-[17px] text-zinc-800 leading-relaxed font-normal">
+                        {item}
+                      </p>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
-            {/* Withholding Period Warning Box (Red Warning Label) */}
+            {/* SECTION 3: WITHHOLDING PERIOD WARNING (RED CALLOUT) */}
             {remedyInfo.hasChemical && (
-              <div className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 p-4 mt-3">
-                <AlertOctagon className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-red-900 uppercase tracking-wider">
-                    අස්වනු තහනම් කාලය පිළිබඳ විශේෂ අනතුරු ඇඟවීම (Withholding Period Warning)
+              <div className="rounded-2xl border-2 border-rose-300 bg-rose-50/90 p-5 sm:p-6 shadow-sm space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white">
+                    <AlertOctagon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-md">
+                      ආරක්ෂක අනතුරු ඇඟවීම · Safety Notice
+                    </span>
+                    <h5 className="text-base sm:text-lg font-bold text-rose-950 mt-1">
+                      අස්වනු තහනම් කාලය පිළිබඳ විශේෂ අනතුරු ඇඟවීම (Withholding Period Warning)
+                    </h5>
+                  </div>
+                </div>
+
+                <div className="pl-0 sm:pl-12">
+                  <p className="text-base sm:text-[17px] text-rose-950 leading-relaxed font-normal">
+                    රසායනික ද්‍රව්‍ය හෝ දිලීර නාශක යෙදීමෙන් පසු{" "}
+                    <span className="inline-block bg-rose-600 text-white font-extrabold px-2.5 py-0.5 rounded-lg text-sm sm:text-base mx-1 shadow-xs">
+                      දින 30 — 45 ක්
+                    </span>{" "}
+                    ගතවනතුරු කිසිදු අස්වැන්නක් ආයුර්වේද ඖෂධ නිෂ්පාදනයට හෝ ආහාර පරිභෝජනය සඳහා යොදා නොගන්න!
                   </p>
-                  <p className="text-xs text-red-700 mt-1 leading-relaxed font-medium">
-                    රසායනික ද්‍රව්‍ය / දිලීර නාශක යොදූ පසු **දින 30-45ක්** යනතුරු අස්වැන්න ආයුර්වේද ඖෂධ නිෂ්පාදනයට හෝ පරිභෝජනය සඳහා යොදා නොගන්න!
+                  <p className="text-xs sm:text-sm text-rose-800 mt-2 font-medium">
+                    ⚠️ රසායනික අවශේෂ (Chemical Residues) ඖෂධීය සංයුතියට අහිතකර බැවින් මෙම කාල සීමාව දැඩිව පිළිපදින්න.
                   </p>
                 </div>
               </div>
@@ -594,51 +777,57 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
         )}
       </div>
 
-      {/* Suitability message banner */}
+      {/* ──────────────────────────────────────────── */}
+      {/* 7. VISUAL SCREENING SUMMARY BANNER */}
+      {/* ──────────────────────────────────────────── */}
       <div
-        className={`flex items-center gap-4 rounded-2xl border p-5 ${isHealthy
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-red-200 bg-red-50"
+        className={`flex items-start sm:items-center gap-4 rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${isHealthy
+          ? "border-emerald-300 bg-emerald-50/90"
+          : "border-rose-300 bg-rose-50/90"
           }`}
       >
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isHealthy ? "bg-emerald-100" : "bg-red-100"
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${isHealthy ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
             }`}
         >
           {isHealthy ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <CheckCircle2 className="h-7 w-7" />
           ) : (
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <AlertTriangle className="h-7 w-7" />
           )}
         </div>
-        <div>
+        <div className="flex-1">
           <p
-            className={`text-sm font-bold ${isHealthy ? "text-emerald-800" : "text-red-800"
+            className={`text-base sm:text-lg font-bold ${isHealthy ? "text-emerald-950" : "text-rose-950"
               }`}
           >
             {isHealthy
-              ? "✅ Quality Verified — Safe for Ayurvedic Medicine Production"
-              : "⚠️ Quality Warning — Do Not Use for Ayurvedic Medicine Production"}
+              ? "ℹ️ Visual Screening Completed — Medicinal Suitability Not Certified"
+              : "⚠️ Disease Predicted — Expert Inspection Recommended"}
           </p>
           <p
-            className={`text-xs mt-0.5 ${isHealthy ? "text-emerald-600" : "text-red-600"
+            className={`text-sm sm:text-base mt-1 leading-relaxed ${isHealthy ? "text-emerald-800" : "text-rose-800"
               }`}
           >
             {isHealthy
-              ? "This leaf has passed the AI health screening and is certified for medicinal use."
-              : `${diseaseLabel} detected. This leaf must be discarded to maintain medicinal quality standards.`}
+              ? "This leaf was classified as healthy based on visible image features. Computer vision evaluates superficial features only and does not verify biochemical active compounds, chemical residues, or pharmacological efficacy."
+              : `Visual indicators of ${diseaseLabel} were predicted from surface image features. Physical inspection and expert review are recommended before discarding or handling.`}
           </p>
         </div>
       </div>
 
-      {/* Reset button */}
-      <button
-        onClick={onReset}
-        className="flex items-center gap-2 self-start rounded-full border border-zinc-300 bg-white px-6 py-2.5 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-400 hover:shadow-sm"
-      >
-        <RotateCcw className="h-4 w-4" />
-        Analyze Another Leaf
-      </button>
+      {/* ──────────────────────────────────────────── */}
+      {/* 8. RESET BUTTON */}
+      {/* ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={onReset}
+          className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-7 py-3 text-sm sm:text-base font-bold text-zinc-800 shadow-sm transition-all hover:bg-zinc-50 hover:border-zinc-400 hover:shadow-md cursor-pointer active:scale-98"
+        >
+          <RotateCcw className="h-5 w-5 text-zinc-600" />
+          Analyze Another Leaf (වෙනත් පත්‍රයක් පරීක්ෂා කරන්න)
+        </button>
+      </div>
     </div>
   );
 }

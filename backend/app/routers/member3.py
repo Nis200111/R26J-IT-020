@@ -1,4 +1,6 @@
 import io
+import hashlib
+import json
 import os
 
 import importlib.util
@@ -16,7 +18,7 @@ if not os.environ.get("KERAS_BACKEND"):
 
 import numpy as np
 from fastapi import APIRouter, UploadFile, File
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 router = APIRouter()
 
@@ -36,7 +38,7 @@ try:
         from tensorflow import keras as _keras
     keras = _keras
     if os.path.exists(MODEL_PATH):
-        model = keras.models.load_model(MODEL_PATH)
+        model = keras.models.load_model(MODEL_PATH, compile=False)
         print(f"[Member3] Model loaded successfully from {MODEL_PATH} (backend: {keras.backend.backend()})")
     else:
         model_load_error = f"Model file not found at {MODEL_PATH}"
@@ -46,8 +48,66 @@ except Exception as e:
     print(f"[Member3] Failed to load model: {model_load_error}")
 
 
-def get_model():
-    return model
+GATEKEEPER_DIR = os.path.dirname(os.path.abspath(MODEL_PATH))
+GATEKEEPER_PATH = os.path.join(GATEKEEPER_DIR, "gatekeeper_candidate.keras")
+GATEKEEPER_CONFIG_PATH = os.path.join(GATEKEEPER_DIR, "inference_config.json")
+gatekeeper_model = None
+gatekeeper_threshold = None
+gatekeeper_load_error = None
+
+try:
+    if keras is None:
+        raise RuntimeError("Keras is unavailable.")
+    with open(GATEKEEPER_CONFIG_PATH, encoding="utf-8-sig") as config_file:
+        gatekeeper_config = json.load(config_file)
+    threshold = float(gatekeeper_config["threshold"])
+    if not np.isfinite(threshold) or not 0 < threshold < 1:
+        raise ValueError("Invalid Gatekeeper threshold.")
+    if gatekeeper_config["image_size"] != [224, 224]:
+        raise ValueError("Unexpected Gatekeeper image size.")
+    # The original Colab export has no labels field. This model's sigmoid
+    # output is the Valid score (Invalid=0, Valid=1), as used during training.
+    if gatekeeper_config.get("labels", {"Invalid": 0, "Valid": 1}) != {"Invalid": 0, "Valid": 1}:
+        raise ValueError("Unexpected Gatekeeper label mapping.")
+    expected_preprocessing = {
+        "orientation": "PIL.ImageOps.exif_transpose",
+        "color_mode": "RGB",
+        "resize": "PIL bilinear",
+        "input_pixel_range": [0, 255],
+        "normalization": "Embedded; do not normalize again",
+        "decision_rule": "Accept if valid_score >= threshold",
+    }
+    for setting, expected in expected_preprocessing.items():
+        if gatekeeper_config.get(setting) != expected:
+            raise ValueError(f"Unsupported Gatekeeper setting: {setting}.")
+    with open(GATEKEEPER_PATH, "rb") as model_file:
+        actual_sha256 = hashlib.file_digest(model_file, "sha256").hexdigest()
+    if actual_sha256 != gatekeeper_config["model_sha256"]:
+        raise ValueError("Gatekeeper model does not match its inference settings.")
+    candidate = keras.models.load_model(GATEKEEPER_PATH, compile=False)
+    if tuple(candidate.input_shape[1:]) != (224, 224, 3):
+        raise ValueError("Unexpected Gatekeeper input shape.")
+    if tuple(candidate.output_shape[1:]) != (1,):
+        raise ValueError("Unexpected Gatekeeper output shape.")
+    gatekeeper_threshold = threshold
+    gatekeeper_model = candidate
+    print(f"[Member3] Gatekeeper loaded (threshold: {threshold}).")
+except Exception as e:
+    gatekeeper_load_error = str(e)
+    print(f"[Member3] Failed to load Gatekeeper: {gatekeeper_load_error}")
+
+
+def get_gatekeeper_score(image: Image.Image) -> float:
+    """Match Colab inference; normalization is embedded in the model."""
+    resized = image.resize((224, 224), Image.Resampling.BILINEAR)
+    batch = np.expand_dims(np.asarray(resized, dtype=np.float32), axis=0)
+    scores = np.asarray(gatekeeper_model.predict(batch, verbose=0)).reshape(-1)
+    if scores.size != 1:
+        raise ValueError("Unexpected Gatekeeper prediction shape.")
+    score = float(scores[0])
+    if not np.isfinite(score) or not 0 <= score <= 1:
+        raise ValueError("Invalid Gatekeeper prediction.")
+    return score
 
 
 def preprocess_image(image: Image.Image) -> np.ndarray:
@@ -61,61 +121,86 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
 
 
 # ─────────────────────────────────────────────
-# Ayurvedic Quality Grading (AMS Framework)
+# Proposed Visual Leaf-Condition Grading
 # ─────────────────────────────────────────────
 def get_ayurvedic_grade(predicted_class: str, confidence: float) -> dict:
     """
-    Ayurvedic Medicinal Suitability (AMS) Grading.
-    Maps disease classification + confidence to a quality grade
-    based on traditional Ayurvedic medicinal production standards.
+    Proposed Visual Leaf-Condition Grading.
+    Maps visual disease classification + confidence into heuristic confidence bands.
+    This grade reflects visual leaf condition only and does not certify medicinal quality,
+    chemical safety, or pharmacological efficacy.
     """
     if predicted_class == "Healthy":
         if confidence > 0.85:
             return {
                 "grade": "A",
-                "title": "Premium Medicinal Quality",
-                "status": "Approved",
-                "description": "This leaf exhibits excellent health with high confidence. Fully suitable for all forms of Ayurvedic medicinal preparations including internal consumption (kashaya, arishtam) and topical applications.",
+                "title": "High-Confidence Healthy Prediction",
+                "status": "Healthy Appearance Predicted",
+                "description": "This leaf is predicted as healthy with high model confidence (>85%). The 85% cut-off is a heuristic threshold used for confidence banding. This visual prediction does not certify biochemical purity, safety, or medicinal potency.",
                 "color": "emerald",
             }
         elif confidence > 0.65:
             return {
                 "grade": "B",
-                "title": "Acceptable Medicinal Quality",
-                "status": "Conditional Approval",
-                "description": "This leaf appears healthy but with moderate confidence. Recommended for external applications (lepa, taila) and processed preparations (decoction/drying). Manual inspection advised before internal preparations.",
+                "title": "Moderate-Confidence Healthy Prediction",
+                "status": "Healthy Appearance Predicted",
+                "description": "This leaf is predicted as healthy with moderate confidence (65%–85%). The 65% threshold is a heuristic cut-off. Manual verification is advised, as visual screening cannot verify medicinal quality or safety.",
                 "color": "amber",
             }
         else:
             return {
                 "grade": "C",
-                "title": "Uncertain Quality",
+                "title": "Uncertain Healthy Prediction",
                 "status": "Manual Review Required",
-                "description": "The model shows low confidence in its healthy classification. This leaf requires manual inspection by an experienced Ayurvedic practitioner before any medicinal use.",
+                "description": "The model shows low confidence (≤65%) for its healthy prediction. An uncertain prediction requires manual review and expert inspection before any use.",
                 "color": "orange",
             }
     else:
-        # Any disease detected (Rust, Rot, Anthracnose, Bacterial Leaf Spot) -> Strictly REJECTED (Grade D)
+        # Disease class predicted (Rust, Rot, Anthracnose, Bacterial Leaf Spot) -> Grade D
         disease_name = predicted_class.replace('_', ' ')
         return {
             "grade": "D",
-            "title": f"Rejected — {disease_name} Detected",
-            "status": "Strictly Rejected",
-            "description": f"Infection detected ({disease_name}). In traditional Ayurvedic medicine, leaves with any signs of disease are strictly prohibited for pharmaceutical production to prevent microbial contamination and preserve therapeutic efficacy. Discard immediately.",
+            "title": f"Disease Predicted — {disease_name}",
+            "status": "Disease Predicted — Expert Review Recommended",
+            "description": f"Visual disease indicators for {disease_name} were predicted by the model. Physical inspection and expert review are recommended. This visual grade does not evaluate disease severity or biochemical toxicity.",
             "color": "red",
         }
 
 
 @router.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    m = get_model()
-    if m is None:
+    if gatekeeper_model is None:
+        }
+    if model is None:
         error_msg = model_load_error or "Model not loaded."
         return {"error": True, "message": f"Model unavailable: {error_msg}"}
 
     try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        with Image.open(io.BytesIO(contents)) as source:
+            if getattr(source, "n_frames", 1) != 1:
+                raise ValueError("Please upload a single still image.")
+            # Transparent backgrounds were not included in Gatekeeper training.
+            if "A" in source.getbands() or "transparency" in source.info:
+                if source.convert("RGBA").getchannel("A").getextrema()[0] < 255:
+                    raise ValueError("Please upload a photo with an opaque background.")
+            image = ImageOps.exif_transpose(source).convert("RGB")
+
+        valid_score = get_gatekeeper_score(image)
+        gatekeeper_result = {
+            "accepted": valid_score >= gatekeeper_threshold,
+            "validScore": round(valid_score, 6),
+            "threshold": gatekeeper_threshold,
+        }
+        if not gatekeeper_result["accepted"]:
+            return {
+                "error": True,
+                "code": "UNSUPPORTED_OR_UNCERTAIN_IMAGE",
+                "message": (
+                    "This image could not be confidently accepted as Aloe vera or Betel. "
+                    "Please upload a clear photo of a supported leaf."
+                ),
+                "gatekeeper": gatekeeper_result,
+            }
 
         img_array = preprocess_image(image)
         prediction = m.predict(img_array, verbose=0)
@@ -129,15 +214,17 @@ async def predict(file: UploadFile = File(...)):
         is_healthy = predicted_label == "Healthy"
 
         if is_healthy:
-            suitability = "This leaf is 100% suitable for the production of Ayurvedic medicine."
+            suitability = "Classified as healthy based on visible image features. Visual screening completed; medicinal suitability is not verified."
         else:
-            suitability = "This leaf should NOT be used for the production of Ayurvedic medicine."
+            disease_display = predicted_label.replace('_', ' ')
+            suitability = f"Visual indicators of {disease_display} detected. Disease Predicted — Expert Review Recommended."
 
         # Ayurvedic Quality Grading (AMS)
         grade_info = get_ayurvedic_grade(predicted_label, confidence)
 
         return {
             "error": False,
+            "gatekeeper": gatekeeper_result,
             "label": predicted_label,
             "confidence": confidence_pct,
             "suitability": suitability,
@@ -150,5 +237,7 @@ async def predict(file: UploadFile = File(...)):
             # Novelty: Ayurvedic Quality Grade
             "qualityGrade": grade_info,
         }
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as e:
+        return {"error": True, "code": "INVALID_IMAGE_OR_PREDICTION", "message": f"Unable to analyze image: {e}"}
     except Exception as e:
         return {"error": True, "message": f"Prediction failed: {str(e)}"}
