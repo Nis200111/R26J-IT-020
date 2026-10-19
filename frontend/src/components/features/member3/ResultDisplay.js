@@ -768,7 +768,7 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
                     ගතවනතුරු කිසිදු අස්වැන්නක් ආයුර්වේද ඖෂධ නිෂ්පාදනයට හෝ ආහාර පරිභෝජනය සඳහා යොදා නොගන්න!
                   </p>
                   <p className="text-xs sm:text-sm text-rose-800 mt-2 font-medium">
-                    ⚠️ රසායනික අවශේෂ (Chemical Residues) ඖෂධීය සංයුතියට අහිතකර බැවින් මෙම කාල සීමාව දැඩිව පිළිපදින්න.
+                    රසායනික අවශේෂ (Chemical Residues) ඖෂධීය සංයුතියට අහිතකර බැවින් මෙම කාල සීමාව දැඩිව පිළිපදින්න.
                   </p>
                 </div>
               </div>
@@ -802,8 +802,8 @@ export default function ResultDisplay({ result, originalImage, onReset }) {
               }`}
           >
             {isHealthy
-              ? "ℹ️ Visual Screening Completed — Medicinal Suitability Not Certified"
-              : "⚠️ Disease Predicted — Expert Inspection Recommended"}
+              ? " Visual Screening Completed — Medicinal Suitability Not Certified"
+              : " Disease Predicted — Expert Inspection Recommended"}
           </p>
           <p
             className={`text-sm sm:text-base mt-1 leading-relaxed ${isHealthy ? "text-emerald-800" : "text-rose-800"
